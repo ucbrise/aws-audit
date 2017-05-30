@@ -1,2 +1,10 @@
-# rise-infra
-tools and scripts used to help manage RISELab infrastructure
+# aws-audit.py
+
+a script that will download an AWS consolidated bill, and parse out spending
+
+## install
+
+## setup
+
+## usage
+

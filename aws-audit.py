@@ -147,11 +147,11 @@ def generate_report(user_dict, limit):
       # report = report + "{:<25}\t({})\t{} {}\n".format(acct_name, acct_num,
       #                                                  acct_total_str,
       #                                                  acct_total_currency)
-      report = report + "{:<25}\t\t{} {}\n".format(acct_name,
+      report = report + "{:<25}\t\t${} {}\n".format(acct_name,
                                                    acct_total_str,
                                                    acct_total_currency)
     subtotal_str = locale.format("%.2f", subtotal, grouping=True)
-    report = report + "Subtotal: %s\n\n" % subtotal_str
+    report = report + "Subtotal: $%s USD\n\n" % subtotal_str
 
   return report
 
