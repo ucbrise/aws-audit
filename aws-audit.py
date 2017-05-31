@@ -22,21 +22,16 @@ import sys
 
 logging.basicConfig(level=logging.WARN, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# AWS details - account ID and S3 bucket name are kept in a separate file in
-# the local directory, "awssettings.py".  do NOT check this in to github!
-#
-# see also .gitignore.
-#
-import awssettings
-
 # email settings:  user-defined content and server information
 #
 import emailsettings
 
-def get_latest_bill(billing_file_path, save):
+def get_latest_bill(aws_id, billing_bucket, billing_file_path, save):
   """
   get the latest billing CSV from S3 (default) or a local file.
   args:
+    - aws_id:             AWS account number
+    - billing_bucket:     name of the billing bucket
     - billing_file_path:  full path to consolidated billing file on a local
                           FS (optional)
     - save:               save the CSV to disk with the default filename
@@ -53,13 +48,12 @@ def get_latest_bill(billing_file_path, save):
     today = datetime.date.today()
     month = today.strftime('%m')
     year = today.strftime('%Y')
-    billing_filename =  awssettings.AWS_S3_ACCOUNT_NUMBER + \
-                        '-aws-billing-csv-' + \
+    billing_filename =  aws_id + '-aws-billing-csv-' + \
                         year + '-' + month + '.csv'
 
     logging.debug('retrieving consolidated billing CSV from S3: ' + billing_filename)
     s3 = boto3.resource('s3')
-    b = s3.Object(awssettings.AWS_S3_BUCKET_NAME, billing_filename)
+    b = s3.Object(billing_bucket, billing_filename)
     billing_data = b.get()['Body'].read().decode('utf-8')
 
     if not billing_data:
@@ -97,7 +91,7 @@ def parse_billing_data(billing_data):
 
   return user_dict
 
-def generate_report(user_dict, limit):
+def generate_report(user_dict, limit, display_ids):
   """
   generate the billing report, categorized by OU.
 
@@ -105,6 +99,7 @@ def generate_report(user_dict, limit):
     - user_dict:    dict of all users and individual total spends
     - limit:        display only amounts greater then this in the report.
                     the amount still counts towards the totals.
+    - display_ids:  display each user's AWS ID after their name
   """
   locale.setlocale(locale.LC_ALL, '') # for comma formatting
   total_spend = 0
@@ -144,12 +139,16 @@ def generate_report(user_dict, limit):
       if acct_total < limit:
         continue
       acct_total_str = locale.format("%.2f", acct_total, grouping=True)
-      # report = report + "{:<25}\t({})\t{} {}\n".format(acct_name, acct_num,
-      #                                                  acct_total_str,
-      #                                                  acct_total_currency)
-      report = report + "{:<25}\t\t${} {}\n".format(acct_name,
-                                                   acct_total_str,
-                                                   acct_total_currency)
+
+      if display_ids:
+        report = report + "{:<25}\t({})\t{} {}\n".format(acct_name, acct_num,
+                                                         acct_total_str,
+                                                         acct_total_currency)
+      else:
+        report = report + "{:<25}\t\t${} {}\n".format(acct_name,
+                                                      acct_total_str,
+                                                      acct_total_currency)
+
     subtotal_str = locale.format("%.2f", subtotal, grouping=True)
     report = report + "Subtotal: $%s USD\n\n" % subtotal_str
 
@@ -190,12 +189,18 @@ between these reports is the formatting of the email subject and preamble.
   parser = argparse.ArgumentParser(description=desc)
   #frequency = parser.add_mutually_exclusive_group()
 
-  parser.add_argument("-e",
-                      "--email",
+  parser.add_argument("-i",
+                      "--id",
                       help="""
-send the report as email, using the settings defined in emailsettings.py
+AWS account ID for consolidated billing.  REQUIRED.
                       """,
-                      action="store_true")
+                      type=str)
+  parser.add_argument("-b",
+                      "--bucket",
+                      help="""
+S3 billing bucket.  REQUIRED.
+                      """,
+                      type=str)
   parser.add_argument("-l",
                       "--limit",
                       help="""
@@ -204,7 +209,9 @@ default is $5.00USD.
                       """,
                       type=float,
                       default=5.0)
-  parser.add_argument("-L", "--local", help="""
+  parser.add_argument("-L",
+                      "--local",
+                      help="""
 read a consolidated billing CSV from the filesystem and bypass
 downloading from S3.
                       """,
@@ -216,6 +223,16 @@ downloading from S3.
   parser.add_argument("-s",
                       "--save",
                       help="save billing CSV to local directory.",
+                      action="store_true")
+  parser.add_argument("-D",
+                      "--display_ids",
+                      help="print out account IDs in the report.",
+                      action="store_true")
+  parser.add_argument("-e",
+                      "--email",
+                      help="""
+send the report as email, using the settings defined in emailsettings.py
+                      """,
                       action="store_true")
   parser.add_argument("-w",
                       "--weekly",
@@ -241,9 +258,17 @@ to trigger the script in this way.  this argument overrides --weekly!
 def main():
   args = parse_args()
 
-  billing_data = get_latest_bill(args.local, args.save)
+  if args.id is None:
+    print "please specify an AWS account id with the --id argument."
+    sys.exit(-1)
+
+  if args.bucket is None:
+    print "please specify a S3 billing bucket name with the --bucket argument."
+    sys.exit(-1)
+
+  billing_data = get_latest_bill(args.id, args.bucket, args.local, args.save)
   user_dict = parse_billing_data(billing_data)
-  report = generate_report(user_dict, args.limit)
+  report = generate_report(user_dict, args.limit, args.display_ids)
 
   if args.email:
     send_email(report, args.weekly)
