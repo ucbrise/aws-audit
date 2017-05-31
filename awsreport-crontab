@@ -5,8 +5,8 @@ SHELL=/bin/bash
 #
 # run weekly report every monday (unless it's the last day of the month)
 #
-05 12  *    * mon [[ "$(date --date=tomorrow +\%d)" != "01" ]] && /path/to/aws-audit.py -e -w
+05 12  *    * mon [[ "$(date --date=tomorrow +\%d)" != "01" ]] && /path/to/aws-audit.py --email --weekly --id <AWS_ID> --bucket <BILLING_BUCKET> --quiet
 #
 # run monthly on the last day of the month
 #
-45 23 28-31 * *   [[ "$(date --date=tomorrow +\%d)" == "01" ]] && /path/to/aws-audit.py -e -m
+45 23 28-31 * *   [[ "$(date --date=tomorrow +\%d)" == "01" ]] && /path/to/aws-audit.py --email --weekly --id <AWS_ID> --bucket <BILLING_BUCKET> --quiet
