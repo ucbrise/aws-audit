@@ -10,6 +10,7 @@
 #
 import argparse
 import boto3
+from botocore.exceptions import ClientError
 import collections
 import csv
 import datetime
@@ -91,7 +92,7 @@ def parse_billing_data(billing_data):
 
   return user_dict
 
-def generate_report(user_dict, limit, display_ids):
+def generate_report(user_dict, limit, display_ids, use_ou):
   """
   generate the billing report, categorized by OU.
 
@@ -105,21 +106,16 @@ def generate_report(user_dict, limit, display_ids):
   total_spend = 0
 
   project_dict = collections.defaultdict(list)
-  client = boto3.client('organizations')
 
   # for each user, get the OU that they are the member of
   for id in user_dict.keys():
     u = user_dict[id]
-    logging.debug('parsing %s %s' % (user_dict[id]['name'], id))
-    ou_r = client.list_parents(ChildId=id)
-    ou_id = ou_r['Parents'][0]['Id']
+    logging.debug('parsing %s %s' % (u['name'], id))
 
-    # hack this for ROOT
-    if ou_id == 'r-43a5':
-      ou_name = 'ROOT'
+    if use_ou:
+      ou_name = get_ou_name(id)
     else:
-      ou_name_r = client.describe_organizational_unit(OrganizationalUnitId=ou_id)
-      ou_name = ou_name_r['OrganizationalUnit']['Name']
+      ou_name = 'ROOT'
 
     total_spend = total_spend + u['total']
     project_dict[ou_name].append((u['name'], id, u['total'], u['currency']))
@@ -153,6 +149,31 @@ def generate_report(user_dict, limit, display_ids):
     report = report + "Subtotal: $%s USD\n\n" % subtotal_str
 
   return report
+
+def get_ou_name(id):
+  """
+  get the name of the OU an account belongs to.
+
+  args:
+    - id:  AWS id
+
+  returns:
+    - ou_name:  string containing the name of the OU
+  """
+  client = boto3.client('organizations')
+  ou_r = client.list_parents(ChildId=id)
+  ou_id = ou_r['Parents'][0]['Id']
+
+  try:
+    ou_name_r = client.describe_organizational_unit(OrganizationalUnitId=ou_id)
+    ou_name = ou_name_r['OrganizationalUnit']['Name']
+  except ClientError as e:
+    if e.response['Error']['Code'] == 'InvalidInputException':
+      ou_name = 'ROOT'
+    else:
+      raise e
+
+  return ou_name
 
 def send_email(report, weekly):
   if not weekly:
@@ -189,6 +210,15 @@ between these reports is the formatting of the email subject and preamble.
   parser = argparse.ArgumentParser(description=desc)
   #frequency = parser.add_mutually_exclusive_group()
 
+  parser.add_argument('-o',
+                      "--ou",
+                      help="""
+use AWS Organizational Units to group users.  this option will greatly increase
+the amount of time it takes the script to run.  if this option is specified,
+but no OUs have been defined for this consolidated billing group, the script
+will still run successfully but will take much longer to complete.
+                      """,
+                      action="store_true")
   parser.add_argument("-i",
                       "--id",
                       help="""
@@ -271,7 +301,7 @@ def main():
 
   billing_data = get_latest_bill(args.id, args.bucket, args.local, args.save)
   user_dict = parse_billing_data(billing_data)
-  report = generate_report(user_dict, args.limit, args.display_ids)
+  report = generate_report(user_dict, args.limit, args.display_ids, args.ou)
 
   if args.email:
     send_email(report, args.weekly)
