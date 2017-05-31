@@ -176,13 +176,22 @@ def get_ou_name(id):
   return ou_name
 
 def send_email(report, weekly):
-  if not weekly:
-    subject = emailsettings.EMAIL_SUBJECT_MONTHLY
-    preamble = emailsettings.EMAIL_PREAMBLE_MONTHLY + \
-               emailsettings.EMAIL_PREAMBLE
-  else:
+  """
+  send the report as an email, with the to:, from:, subject: and preamble
+  defined in emailsettings.py.
+
+  args:
+    - report:  the raw string containing the final report
+    - weekly:  boolean, if true use weekly email formatting.  if false, use
+               monthly.
+  """
+  if weekly:
     subject = emailsettings.EMAIL_SUBJECT_WEEKLY
     preamble = emailsettings.EMAIL_PREAMBLE_WEEKLY + \
+               emailsettings.EMAIL_PREAMBLE
+  else:
+    subject = emailsettings.EMAIL_SUBJECT_MONTHLY
+    preamble = emailsettings.EMAIL_PREAMBLE_MONTHLY + \
                emailsettings.EMAIL_PREAMBLE
 
   report = preamble + report + "\n\n---\nSent from %s.\n" % \
@@ -198,89 +207,93 @@ def send_email(report, weekly):
              [emailsettings.EMAIL_TO_ADDR],
              msg.as_string())
 
-
 def parse_args():
   desc = """
-download, parse and create an email report for general AWS spend.
-this script is designed to run as a cron job, providing weekly
-(incremental) and end-of-month billing reports.  the only difference
-between these reports is the formatting of the email subject and preamble.
+Download, parse and create reports for general AWS spend, optionally
+sending the report as an e-mail.
+  """
+  epil = """
+Please refer to README.md for more detailed usage instructions and examples.
   """
 
-  parser = argparse.ArgumentParser(description=desc)
-  #frequency = parser.add_mutually_exclusive_group()
+  parser = argparse.ArgumentParser(description=desc, epilog=epil)
 
+  # AWS settings
+  parser.add_argument("-i",
+                      "--id",
+                      help="""
+AWS account ID for consolidated billing.  Required unless using the --local
+argument.
+                      """,
+                      type=str,
+                      metavar="AWS_ID")
+  parser.add_argument("-b",
+                      "--bucket",
+                      help="""
+S3 billing bucket name.  Required unless using the --local argument.
+                      """,
+                      type=str,
+                      metavar="S3_BILLING_BUCKET")
+  parser.add_argument("-L",
+                      "--local",
+                      help="""
+Read a consolidated billing CSV from the filesystem and bypass
+downloading from S3.
+                      """,
+                      type=str,
+                      metavar="LOCAL_BILLING_CSV")
+  parser.add_argument("-s",
+                      "--save",
+                      help="Save the billing CSV to the local directory.",
+                      action="store_true")
+
+  # output formatting
+  parser.add_argument("-q",
+                      "--quiet",
+                      help="Do not print to STDOUT.",
+                      action="store_true")
   parser.add_argument('-o',
                       "--ou",
                       help="""
-use AWS Organizational Units to group users.  this option will greatly increase
-the amount of time it takes the script to run.  if this option is specified,
+Use AWS Organizational Units to group users.  This option will greatly increase
+the amount of time it takes the script to run.  If this option is specified,
 but no OUs have been defined for this consolidated billing group, the script
 will still run successfully but will take much longer to complete.
                       """,
                       action="store_true")
-  parser.add_argument("-i",
-                      "--id",
-                      help="""
-AWS account ID for consolidated billing.  required unless using the --local
-argument.
-                      """,
-                      type=str)
-  parser.add_argument("-b",
-                      "--bucket",
-                      help="""
-S3 billing bucket name.  required unless using the --local argument.
-                      """,
-                      type=str)
   parser.add_argument("-l",
                       "--limit",
                       help="""
-do not display spends less than this value in USD on the report.
-default is $5.00USD.
+Do not display spends less than this value in USD on the report.  Any spends
+not displayed will still be counted towards all totals.  Default is $5.00USD.
                       """,
                       type=float,
                       default=5.0)
-  parser.add_argument("-L",
-                      "--local",
-                      help="""
-read a consolidated billing CSV from the filesystem and bypass
-downloading from S3.
-                      """,
-                      type=str)
-  parser.add_argument("-q",
-                      "--quiet",
-                      help="do not print to STDOUT.",
-                      action="store_true")
-  parser.add_argument("-s",
-                      "--save",
-                      help="save billing CSV to local directory.",
-                      action="store_true")
   parser.add_argument("-D",
                       "--display_ids",
-                      help="print out account IDs in the report.",
+                      help="Display AWS account IDs in the report.",
                       action="store_true")
   parser.add_argument("-e",
                       "--email",
                       help="""
-send the report as email, using the settings defined in emailsettings.py
+Send the report as an email, using the settings defined in emailsettings.py.
                       """,
                       action="store_true")
-  parser.add_argument("-w",
-                      "--weekly",
-                      help="""
-formats the email verbiage to show the report is a weekly per-user
-report on spend from the start of the current month to the present day.
-this argument is default if not specified.
-                      """,
-                      action="store_true")
-  parser.add_argument("-m",
-                      "--monthly",
-                      help="""
-formats email subject and body to say "end of month".  typically used
-for end of month reports.  use cron trickery (in the provided crontab)
-to trigger the script in this way.  this argument overrides --weekly!
-                      """,
-                      action="store_true")
+
+  frequency = parser.add_mutually_exclusive_group()
+  frequency.add_argument("-w",
+                         "--weekly",
+                         help="""
+Formats the email subject and body to deonte a "weekly" report on spend,
+from the start of the current month to the present day.
+                         """,
+                         action="store_true")
+  frequency.add_argument("-m",
+                         "--monthly",
+                         help="""
+Formats the email subject and body to denote an "end of month" report.
+                         """,
+                         action="store_true")
 
   args = parser.parse_args()
 
@@ -290,13 +303,18 @@ def main():
   args = parse_args()
 
   if args.id is None and args.local is None:
-    print "please specify an AWS account id with the --id argument, " + \
+    print "Please specify an AWS account id with the --id argument, " + \
       "unless reading in a local billing CSV with --local <filename>."
     sys.exit(-1)
 
   if args.bucket is None and args.local is None:
-    print "please specify a S3 billing bucket name with the --bucket " + \
+    print "Please specify a S3 billing bucket name with the --bucket " + \
       "argument, unless reading in a local billing CSV with --local <filename>."
+    sys.exit(-1)
+
+  if args.email and (not args.weekly and not args.monthly):
+    print "Please specify the frequency formatting of the email using " + \
+      "--weekly or --monthly"
     sys.exit(-1)
 
   billing_data = get_latest_bill(args.id, args.bucket, args.local, args.save)
