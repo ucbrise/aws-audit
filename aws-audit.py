@@ -321,11 +321,11 @@ def main():
   user_dict = parse_billing_data(billing_data)
   report = generate_report(user_dict, args.limit, args.display_ids, args.ou)
 
-  if args.email:
-    send_email(report, args.weekly)
-
   if not args.quiet:
     print report
+
+  if args.email:
+    send_email(report, args.weekly)
 
 if __name__ == "__main__":
   main()
