@@ -192,13 +192,14 @@ between these reports is the formatting of the email subject and preamble.
   parser.add_argument("-i",
                       "--id",
                       help="""
-AWS account ID for consolidated billing.  REQUIRED.
+AWS account ID for consolidated billing.  required unless using the --local
+argument.
                       """,
                       type=str)
   parser.add_argument("-b",
                       "--bucket",
                       help="""
-S3 billing bucket.  REQUIRED.
+S3 billing bucket name.  required unless using the --local argument.
                       """,
                       type=str)
   parser.add_argument("-l",
@@ -258,12 +259,14 @@ to trigger the script in this way.  this argument overrides --weekly!
 def main():
   args = parse_args()
 
-  if args.id is None:
-    print "please specify an AWS account id with the --id argument."
+  if args.id is None and args.local is None:
+    print "please specify an AWS account id with the --id argument, " + \
+      "unless reading in a local billing CSV with --local <filename>."
     sys.exit(-1)
 
-  if args.bucket is None:
-    print "please specify a S3 billing bucket name with the --bucket argument."
+  if args.bucket is None and args.local is None:
+    print "please specify a S3 billing bucket name with the --bucket " + \
+      "argument, unless reading in a local billing CSV with --local <filename>."
     sys.exit(-1)
 
   billing_data = get_latest_bill(args.id, args.bucket, args.local, args.save)
