@@ -92,7 +92,7 @@ def parse_billing_data(billing_data):
 
   return user_dict
 
-def generate_report(user_dict, limit, display_ids, use_ou):
+def generate_report(user_dict, limit, display_ids, use_ou, full):
   """
   generate the billing report, categorized by OU.
 
@@ -101,10 +101,11 @@ def generate_report(user_dict, limit, display_ids, use_ou):
     - limit:        display only amounts greater then this in the report.
                     the amount still counts towards the totals.
     - display_ids:  display each user's AWS ID after their name
+    - full:         boolean.  generate a full report.
   """
   locale.setlocale(locale.LC_ALL, '') # for comma formatting
   total_spend = 0
-
+  report = ''
   project_dict = collections.defaultdict(list)
 
   # for each user, get the OU that they are the member of
@@ -120,10 +121,14 @@ def generate_report(user_dict, limit, display_ids, use_ou):
     total_spend = total_spend + u['total']
     project_dict[ou_name].append((u['name'], id, u['total'], u['currency']))
 
-  # generate the report, broken down by project
   sum_str = locale.format('%.2f', total_spend, grouping=True)
-  report = '== Current AWS totals:  $%s USD (only shown below: > $%s) ==\n\n' \
-            % (sum_str, limit)
+  if (full and use_ou) or (not full and not use_ou) or (use_ou and not full):
+    report = report + \
+             '== Current AWS totals:  $%s USD (only shown below: > $%s) ==\n\n' \
+             % (sum_str, limit)
+  else:
+    full = False # so we always skip the last if statement
+    report = report + '\n\n'
 
   for p in sorted(project_dict.keys()):
     report = report + "Project/Group: %s\n" % p
@@ -147,6 +152,11 @@ def generate_report(user_dict, limit, display_ids, use_ou):
 
     subtotal_str = locale.format("%.2f", subtotal, grouping=True)
     report = report + "Subtotal: $%s USD\n\n" % subtotal_str
+
+  if full:
+    use_ou = False
+    report = report + "== All accounts, sorted by spend: =="
+    report = report + generate_report(user_dict, limit, display_ids, use_ou, full)
 
   return report
 
@@ -273,6 +283,15 @@ not displayed will still be counted towards all totals.  Default is $5.00USD.
                       "--display_ids",
                       help="Display AWS account IDs in the report.",
                       action="store_true")
+  parser.add_argument("-f",
+                      "--full",
+                      help="""
+Generate a full report.  This option is only useful when using OUs in
+a consolidated billing setting, and the --ou option is used.  An additional
+section is added at the end of the original report that lists all users sorted
+by spend.  If the --ou argument is not set, this will be ignored.
+                      """,
+                      action="store_true")
   parser.add_argument("-e",
                       "--email",
                       help="""
@@ -302,6 +321,9 @@ Formats the email subject and body to denote an "end of month" report.
 def main():
   args = parse_args()
 
+  if args.full and not args.ou:
+    args.full = False
+
   if args.id is None and args.local is None:
     print "Please specify an AWS account id with the --id argument, " + \
       "unless reading in a local billing CSV with --local <filename>."
@@ -319,7 +341,8 @@ def main():
 
   billing_data = get_latest_bill(args.id, args.bucket, args.local, args.save)
   user_dict = parse_billing_data(billing_data)
-  report = generate_report(user_dict, args.limit, args.display_ids, args.ou)
+  report = generate_report(user_dict, args.limit, args.display_ids,
+                           args.ou, args.full)
 
   if not args.quiet:
     print report
