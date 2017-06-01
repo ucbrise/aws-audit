@@ -171,9 +171,18 @@ def get_ou_name(id):
     - ou_name:  string containing the name of the OU
   """
   client = boto3.client('organizations')
-  ou_r = client.list_parents(ChildId=id)
-  ou_id = ou_r['Parents'][0]['Id']
 
+  # handle accounts going away -- dump them in ROOT by default
+  try:
+    ou_r = client.list_parents(ChildId=id)
+    ou_id = ou_r['Parents'][0]['Id']
+  except ClientError as e:
+    if e.response['Error']['Code'] == 'ChildNotFoundException':
+      return 'ROOT'
+    else:
+      raise e
+
+  # handle the case of an OU's parent being root.
   try:
     ou_name_r = client.describe_organizational_unit(OrganizationalUnitId=ou_id)
     ou_name = ou_name_r['OrganizationalUnit']['Name']
