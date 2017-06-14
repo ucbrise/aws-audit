@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # aws-audit.py
 #
@@ -58,7 +58,7 @@ def get_latest_bill(aws_id, billing_bucket, billing_file_path, save):
     billing_data = b.get()['Body'].read().decode('utf-8')
 
     if not billing_data:
-      print "unable to find billing data (%s) in your bucket!" % billing_filename
+      print("unable to find billing data (%s) in your bucket!" % billing_filename)
       sys.exit(-1)
 
   if (save):
@@ -334,18 +334,19 @@ def main():
     args.full = False
 
   if args.id is None and args.local is None:
-    print "Please specify an AWS account id with the --id argument, " + \
-      "unless reading in a local billing CSV with --local <filename>."
+    print("Please specify an AWS account id with the --id argument, " +
+          "unless reading in a local billing CSV with --local <filename>.")
     sys.exit(-1)
 
   if args.bucket is None and args.local is None:
-    print "Please specify a S3 billing bucket name with the --bucket " + \
-      "argument, unless reading in a local billing CSV with --local <filename>."
+    print("Please specify a S3 billing bucket name with the --bucket " +
+          "argument, unless reading in a local billing CSV with --local " +
+          "<filename>.")
     sys.exit(-1)
 
   if args.email and (not args.weekly and not args.monthly):
-    print "Please specify the frequency formatting of the email using " + \
-      "--weekly or --monthly"
+    print("Please specify the frequency formatting of the email using " +
+          "--weekly or --monthly")
     sys.exit(-1)
 
   billing_data = get_latest_bill(args.id, args.bucket, args.local, args.save)
@@ -354,7 +355,7 @@ def main():
                            args.ou, args.full)
 
   if not args.quiet:
-    print report
+    print(report)
 
   if args.email:
     send_email(report, args.weekly)
