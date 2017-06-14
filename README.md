@@ -3,7 +3,7 @@
 a script that will download an AWS consolidated bill, and parse out spending
 
 ## install
-you need to have python 2.7 and the latest version of boto3 installed via your package manager of choice.
+you need to have python 3 and the latest version of boto3 installed via your package manager of choice.  i recommend anaconda python: https://www.continuum.io/downloads
 
 ## setup
 make sure your aws credentials are in a location that boto3 can discover.  currently, the script will look for shared credentials in $HOME/.aws/credentials.  more details on how to configure this are here:  https://boto3.readthedocs.io/en/latest/guide/configuration.html#configuring-credentials
