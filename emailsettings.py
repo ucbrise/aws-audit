@@ -31,10 +31,7 @@ Final AWS totals for the month of %s, %s.
 """ % (MONTH_NAME, YEAR)
 
 EMAIL_PREAMBLE = """
-Please review your AWS usage below and confirm it matches your expectations,
-as well as following the RISELab Usage Guidelines:
-
-https://rise.cs.berkeley.edu/wiki/resources/aws
+Please review your AWS usage below and confirm it matches your expectations.
 
 Note: AWS EC2 instances cost something whenever they "run", so, shutdown or
 terminate instances when you finish with them so that they do not run any
