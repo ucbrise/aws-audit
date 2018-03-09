@@ -71,6 +71,7 @@ class Node(object):
                 parent_path = self.get_parent_path()
                 parent_path = ' -> '.join(parent_path)
                 print(parent_path, '->', name, node_spend, 'USD')
+                print('==========')
             else:
                 print(name, node_spend, 'USD')
 
