@@ -66,14 +66,13 @@ class Node(object):
         if self.accounts:
             locale.setlocale(locale.LC_ALL, '')
             node_spend = locale.format('%.2f', self.node_spend, grouping=True)
-            node_spend = '$' + node_spend
+            name = self.name + ':'
             if self.parent is not None:
                 parent_path = self.get_parent_path()
                 parent_path = ' -> '.join(parent_path)
-                name = self.name + ':'
-                print(parent_path, '->', self.name, node_spend)
+                print(parent_path, '->', name, node_spend, 'USD')
             else:
-                print(self.name, node_spend)
+                print(name, node_spend, 'USD')
 
             for account in self.get_accounts():
                 if account[2] >= limit:
@@ -81,9 +80,14 @@ class Node(object):
                     account_spend = '$' + str(account_spend)
                     if display_ids:
                         id = '(' + account[0] + ')'
-                        print(account[1], id, '\t\t\t', account_spend)
+                        print('{:25}\t({})\t{} {}'.format(account[1],
+                                                          account[0],
+                                                          account_spend,
+                                                          account[3]))
                     else:
-                        print(account[1], '\t\t\t\t', account_spend)
+                        print('{:25}\t\t{} {}'.format(account[1],
+                                                      account_spend,
+                                                      account[3]))
 
             print()
 

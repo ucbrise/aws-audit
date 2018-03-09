@@ -15,6 +15,7 @@ import collections
 import csv
 import datetime
 from email.mime.text import MIMEText
+from io import StringIO
 import locale
 import logging
 import smtplib
@@ -198,8 +199,9 @@ def populate_tree(tree, user_dict):
         current_node.add_account((id, name, 0.0))
       else:
         total = user_dict[id]['total']
-        current_node.add_account((id, name, total))
-        del user_dict[id]
+        currency = user_dict[id]['currency']
+        current_node.add_account((id, name, total, currency))
+        #del user_dict[id]
 
   if children is not None:
     for id, name in children:
@@ -419,15 +421,22 @@ def main():
 
   else:
     root = init_tree(args.id)
-    removed_accounts = populate_tree(root, user_dict)
+    populate_tree(root, user_dict)
     sum_str = locale.format('%.2f', root.node_spend, grouping=True)
     report = report + \
            '== Current AWS totals:  $%s USD (only shown below: > $%s) ==\n\n' \
-           % (sum_str, limit)
+           % (sum_str, args.limit)
 
-    report = root.print_tree(limit=args.limit, display_ids=args.display_ids)
+    old_stdout = sys.stdout
+    tree_output = StringIO()
+    sys.stdout = tree_output
 
-    # add the basic full list to the end of this report
+    root.print_tree(limit=args.limit, display_ids=args.display_ids)
+
+    sys.stdout = old_stdout
+    report = report + tree_output.getvalue()
+
+    # add the basic report to the end if desired
     if args.full:
       report = report + '\n\n'
       report = report + generate_simple_report(user_dict, args.limit,
