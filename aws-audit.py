@@ -21,6 +21,9 @@ import smtplib
 import socket
 import sys
 
+# support for N-ary tree data structure to support OUs
+import tree
+
 logging.basicConfig(level=logging.WARN, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # email settings:  user-defined content and server information
@@ -70,7 +73,7 @@ def get_latest_bill(aws_id, billing_bucket, billing_file_path, save):
 
 def parse_billing_data(billing_data):
   """
-  parse the billing data, store it in a hash and calculate total spend.
+  parse the billing data and store it in a hash
 
   args:
     - billing_data:  CSV object of billing data
@@ -89,6 +92,120 @@ def parse_billing_data(billing_data):
       user_dict[acct_num]['name'] = row[9]
       user_dict[acct_num]['total'] = float(row[24])
       user_dict[acct_num]['currency'] = row[23]
+
+  return user_dict
+
+def get_root_ou_id(aws_id):
+  """
+  get the ID of the ROOT OU
+
+  args:
+    - aws_id:  AWS account number
+
+  returns:
+    - ou_id:   ID number of the ROOT OU
+  """
+  client = boto3.client('organizations')
+  ou_r = client.list_roots()
+
+  return (ou_r['Roots'][0]['Id'], 'ROOT')
+
+def get_ou_children(ou_id):
+  """
+  get the list of OU children for a given OU id
+
+  args:
+    - ou_id:  ID number of the current OU
+
+  returns:
+    - children:  list of tuples containing children OU IDs and descriptive
+                 name, or NoneType
+  """
+  client = boto3.client('organizations')
+  ou_r = client.list_organizational_units_for_parent(ParentId=ou_id)
+
+  children = list()
+  while True:
+    for ou in ou_r['OrganizationalUnits']:
+      children.append((ou['Id'], ou['Name']))
+    if 'NextToken' in ou_r:
+      ou_r = client.list_organizational_units_for_parent(
+          ParentId=ou_id, NextToken=ou_r['NextToken'])
+    else:
+      break
+  return children or None
+
+def get_accounts_for_ou(ou_id):
+  """
+  get the accounts attached to a given ou_id
+
+  args:
+    - ou_id:  ID number of an OU
+
+  returns:
+    - accounts: list of tuples containing AWS ID and full name
+  """
+  client = boto3.client('organizations')
+  ou_r = client.list_accounts_for_parent(ParentId=ou_id)
+  accounts = list()
+
+  while True:
+    for acct in ou_r['Accounts']:
+      accounts.append((acct['Id'], acct['Name']))
+    if 'NextToken' in ou_r:
+      ou_r = client.list_accounts_for_parent(ParentId=ou_id,
+                                             NextToken=ou_r['NextToken'])
+    else:
+      break
+  return accounts
+
+def init_tree(aws_id):
+  """
+  initializes the OU tree datastructure
+
+  args:
+    - aws_id:  the AWS ID of the root consolidated billing account
+
+  returns:
+    - root Node object
+  """
+  root_ou = get_root_ou_id(aws_id)
+  root = Node(id=root_ou[0], name=root_ou[1])
+
+  return root
+
+def populate_tree(tree, user_dict):
+  """
+  populates the OU-based tree, mapping account/OU to billing data.  if users
+  are in the bill, but not in the AWS org (due to leaving), the left-over
+  accounts are returned.
+
+  args:
+    tree:  root node object
+    user_dict:  dict created from parsing billing file
+
+  returns:
+    user_dict:  dict containing left-over users
+  """
+  current_node = tree
+  children = get_ou_children(current_node.id)
+
+  accounts = get_accounts_for_ou(current_node.id)
+  if accounts:
+    for id, name in accounts:
+      if id not in user_dict:
+        # account has zero spend!
+        current_node.add_account((id, name, 0.0))
+      else:
+        total = user_dict[id]['total']
+        current_node.add_account((id, name, total))
+        del user_dict[id]
+
+  if children is not None:
+    for id, name in children:
+      current_node.add_child(id=id, name=name)
+    for child in current_node.children:
+      populate_tree(child, user_dict)
 
   return user_dict
 
@@ -351,6 +468,12 @@ def main():
 
   billing_data = get_latest_bill(args.id, args.bucket, args.local, args.save)
   user_dict = parse_billing_data(billing_data)
+
+  if args.ou:
+    root = init_tree(aws_id)
+    removed_accounts = populate_tree(root, user_dict)
+    print('remaining accounts:\n', removed_accounts)
+
   report = generate_report(user_dict, args.limit, args.display_ids,
                            args.ou, args.full)
 
