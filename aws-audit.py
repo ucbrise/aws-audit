@@ -209,7 +209,7 @@ def populate_tree(tree, user_dict):
 
   return user_dict
 
-def generate_report(user_dict, limit, display_ids, use_ou, full):
+def generate_simple_report(user_dict, limit, display_ids):
   """
   generate the billing report, categorized by OU.
 
@@ -223,93 +223,36 @@ def generate_report(user_dict, limit, display_ids, use_ou, full):
   locale.setlocale(locale.LC_ALL, '') # for comma formatting
   total_spend = 0
   report = ''
-  project_dict = collections.defaultdict(list)
+  account_details = list()
 
   # for each user, get the OU that they are the member of
   for id in user_dict.keys():
     u = user_dict[id]
-    logging.debug('parsing %s %s' % (u['name'], id))
-
-    if use_ou:
-      ou_name = get_ou_name(id)
-    else:
-      ou_name = 'ROOT'
-
     total_spend = total_spend + u['total']
-    project_dict[ou_name].append((u['name'], id, u['total'], u['currency']))
+    account_details.append((u['name'], id, u['total'], u['currency']))
 
   sum_str = locale.format('%.2f', total_spend, grouping=True)
-  if (full and use_ou) or (not full and not use_ou) or (use_ou and not full):
-    report = report + \
-             '== Current AWS totals:  $%s USD (only shown below: > $%s) ==\n\n' \
-             % (sum_str, limit)
-  else:
-    full = False # so we always skip the last if statement
-    report = report + '\n\n'
+  report = report + \
+           '== Current AWS totals:  $%s USD (only shown below: > $%s) ==\n\n' \
+           % (sum_str, limit)
 
-  for p in sorted(project_dict.keys()):
-    report = report + "Project/Group: %s\n" % p
+  for acct in sorted(account_details, key = lambda acct: -acct[2]):
+    (acct_name, acct_num, acct_total, acct_total_currency) = acct
 
-    subtotal = 0
-    for t in sorted(project_dict[p], key = lambda t: -t[2]):
-      (acct_name, acct_num, acct_total, acct_total_currency) = t
-      subtotal = subtotal + acct_total
-      if acct_total < limit:
-        continue
-      acct_total_str = locale.format("%.2f", acct_total, grouping=True)
+    if acct_total < limit:
+      continue
 
-      if display_ids:
-        report = report + "{:<25}\t({})\t{} {}\n".format(acct_name, acct_num,
-                                                         acct_total_str,
-                                                         acct_total_currency)
-      else:
-        report = report + "{:<25}\t\t${} {}\n".format(acct_name,
-                                                      acct_total_str,
-                                                      acct_total_currency)
-
-    subtotal_str = locale.format("%.2f", subtotal, grouping=True)
-    report = report + "Subtotal: $%s USD\n\n" % subtotal_str
-
-  if full:
-    use_ou = False
-    report = report + "== All accounts, sorted by spend: =="
-    report = report + generate_report(user_dict, limit, display_ids, use_ou, full)
+    acct_total_str = locale.format("%.2f", acct_total, grouping=True)
+    if display_ids:
+      report = report + "{:<25}\t({})\t{} {}\n".format(acct_name, acct_num,
+                                                       acct_total_str,
+                                                       acct_total_currency)
+    else:
+      report = report + "{:<25}\t\t${} {}\n".format(acct_name,
+                                                    acct_total_str,
+                                                    acct_total_currency)
 
   return report
-
-def get_ou_name(id):
-  """
-  get the name of the OU an account belongs to.
-
-  args:
-    - id:  AWS id
-
-  returns:
-    - ou_name:  string containing the name of the OU
-  """
-  client = boto3.client('organizations')
-
-  # handle accounts going away -- dump them in ROOT by default
-  try:
-    ou_r = client.list_parents(ChildId=id)
-    ou_id = ou_r['Parents'][0]['Id']
-  except ClientError as e:
-    if e.response['Error']['Code'] == 'ChildNotFoundException':
-      return 'ROOT'
-    else:
-      raise e
-
-  # handle the case of an OU's parent being root.
-  try:
-    ou_name_r = client.describe_organizational_unit(OrganizationalUnitId=ou_id)
-    ou_name = ou_name_r['OrganizationalUnit']['Name']
-  except ClientError as e:
-    if e.response['Error']['Code'] == 'InvalidInputException':
-      ou_name = 'ROOT'
-    else:
-      raise e
-
-  return ou_name
 
 def send_email(report, weekly):
   """
@@ -474,8 +417,7 @@ def main():
     removed_accounts = populate_tree(root, user_dict)
     print('remaining accounts:\n', removed_accounts)
 
-  report = generate_report(user_dict, args.limit, args.display_ids,
-                           args.ou, args.full)
+  report = generate_simple_report(user_dict, args.limit, args.display_ids0
 
   if not args.quiet:
     print(report)
