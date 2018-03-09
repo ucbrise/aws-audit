@@ -420,6 +420,11 @@ def main():
   else:
     root = init_tree(aws_id)
     removed_accounts = populate_tree(root, user_dict)
+    sum_str = locale.format('%.2f', root.node_spend, grouping=True)
+    report = report + \
+           '== Current AWS totals:  $%s USD (only shown below: > $%s) ==\n\n' \
+           % (sum_str, limit)
+
     report = root.print_tree(limit=args.limit, display_ids=args.display_ids)
 
     # add the basic full list to the end of this report
