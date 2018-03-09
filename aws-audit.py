@@ -418,7 +418,7 @@ def main():
     report = generate_simple_report(user_dict, args.limit, args.display_ids)
 
   else:
-    root = init_tree(aws_id)
+    root = init_tree(args.id)
     removed_accounts = populate_tree(root, user_dict)
     sum_str = locale.format('%.2f', root.node_spend, grouping=True)
     report = report + \
