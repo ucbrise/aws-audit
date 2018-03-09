@@ -417,7 +417,7 @@ def main():
     removed_accounts = populate_tree(root, user_dict)
     print('remaining accounts:\n', removed_accounts)
 
-  report = generate_simple_report(user_dict, args.limit, args.display_ids0
+  report = generate_simple_report(user_dict, args.limit, args.display_ids)
 
   if not args.quiet:
     print(report)
