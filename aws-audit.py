@@ -97,6 +97,7 @@ def parse_billing_data(billing_data):
   return user_dict
 
 def get_root_ou_id(aws_id):
+  # TODO: use collections.namedtuple
   """
   get the ID of the ROOT OU
 
@@ -104,7 +105,7 @@ def get_root_ou_id(aws_id):
     - aws_id:  AWS account number
 
   returns:
-    - ou_id:   ID number of the ROOT OU
+    - ou_id:   tuple containing ID number of the ROOT OU and 'ROOT'
   """
   client = boto3.client('organizations')
   ou_r = client.list_roots()
@@ -112,6 +113,7 @@ def get_root_ou_id(aws_id):
   return (ou_r['Roots'][0]['Id'], 'ROOT')
 
 def get_ou_children(ou_id):
+  # TODO: use collections.namedtuple
   """
   get the list of OU children for a given OU id
 
@@ -137,6 +139,7 @@ def get_ou_children(ou_id):
   return children or None
 
 def get_accounts_for_ou(ou_id):
+  # TODO: use collections.namedtuple
   """
   get the accounts attached to a given ou_id
 

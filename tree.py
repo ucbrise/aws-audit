@@ -4,6 +4,7 @@ inspiration from https://github.com/lianemeth/forest/blob/master/forest/NaryTree
 import locale
 import weakref
 
+# TODO: FIX TAB FORMATTING FOR THE LOVE OF ALL THATS HOLY
 class Node(object):
     def __init__(self, id=None, name=None, children=None, accounts=None,
                  node_spend=0, parent=None):
