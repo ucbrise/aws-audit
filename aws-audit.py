@@ -170,7 +170,7 @@ def init_tree(aws_id):
     - root Node object
   """
   root_ou = get_root_ou_id(aws_id)
-  root = Node(id=root_ou[0], name=root_ou[1])
+  root = tree.Node(id=root_ou[0], name=root_ou[1])
 
   return root
 
@@ -409,15 +409,24 @@ def main():
           "--weekly or --monthly")
     sys.exit(-1)
 
+  report = ''
   billing_data = get_latest_bill(args.id, args.bucket, args.local, args.save)
   user_dict = parse_billing_data(billing_data)
 
-  if args.ou:
+  # no OU tree, just spew out the report
+  if not args.ou:
+    report = generate_simple_report(user_dict, args.limit, args.display_ids)
+
+  else:
     root = init_tree(aws_id)
     removed_accounts = populate_tree(root, user_dict)
-    print('remaining accounts:\n', removed_accounts)
+    report = root.print_tree(limit=args.limit, display_ids=args.display_ids)
 
-  report = generate_simple_report(user_dict, args.limit, args.display_ids)
+    # add the basic full list to the end of this report
+    if args.full:
+      report = report + '\n\n'
+      report = report + generate_simple_report(user_dict, args.limit,
+                                               args.display_ids)
 
   if not args.quiet:
     print(report)
