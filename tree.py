@@ -67,6 +67,7 @@ class Node(object):
         if self.accounts:
             locale.setlocale(locale.LC_ALL, '')
             node_spend = locale.format('%.2f', self.node_spend, grouping=True)
+            node_spend = '$' + str(node_spend)
             name = self.name + ':'
             if self.parent is not None:
                 parent_path = self.get_parent_path()
