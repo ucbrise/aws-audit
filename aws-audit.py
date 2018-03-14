@@ -35,14 +35,14 @@ def get_latest_bill(aws_id, billing_bucket, billing_file_path, save):
   """
   get the latest billing CSV from S3 (default) or a local file.
   args:
-    - aws_id:             AWS account number
-    - billing_bucket:     name of the billing bucket
-    - billing_file_path:  full path to consolidated billing file on a local
-                          FS (optional)
-    - save:               save the CSV to disk with the default filename
+    aws_id:             AWS account number
+    billing_bucket:     name of the billing bucket
+    billing_file_path:  full path to consolidated billing file on a local
+                        FS (optional)
+    save:               save the CSV to disk with the default filename
 
   returns:
-    - csv object of billing data
+    csv object of billing data
   """
   if billing_file_path:
     logging.debug('opening local consolidated billing CSV for reading: ' \
@@ -77,11 +77,11 @@ def parse_billing_data(billing_data):
   parse the billing data and store it in a hash
 
   args:
-    - billing_data:  CSV object of billing data
+    billing_data:  CSV object of billing data
 
   returns:
-    - user_dict:  dict, keyed by AWS ID, containing name, user total for all
-                  services, and currency
+    user_dict:  dict, keyed by AWS ID, containing name, user total for all
+                services, and currency
   """
   user_dict = collections.defaultdict(dict)
 
@@ -102,10 +102,10 @@ def get_root_ou_id(aws_id):
   get the ID of the ROOT OU
 
   args:
-    - aws_id:  AWS account number
+    aws_id:  AWS account number
 
   returns:
-    - ou_id:   tuple containing ID number of the ROOT OU and 'ROOT'
+    ou_id:   tuple containing ID number of the ROOT OU and 'ROOT'
   """
   client = boto3.client('organizations')
   ou_r = client.list_roots()
@@ -118,11 +118,11 @@ def get_ou_children(ou_id):
   get the list of OU children for a given OU id
 
   args:
-    - ou_id:  ID number of the current OU
+    ou_id:  ID number of the current OU
 
   returns:
-    - children:  list of tuples containing children OU IDs and descriptive
-                 name, or NoneType
+    children:  list of tuples containing children OU IDs and descriptive
+               name, or NoneType
   """
   client = boto3.client('organizations')
   ou_r = client.list_organizational_units_for_parent(ParentId=ou_id)
@@ -144,10 +144,10 @@ def get_accounts_for_ou(ou_id):
   get the accounts attached to a given ou_id
 
   args:
-    - ou_id:  ID number of an OU
+    ou_id:  ID number of an OU
 
   returns:
-    - accounts: list of tuples containing AWS ID and full name
+    accounts: list of tuples containing AWS ID and full name
   """
   client = boto3.client('organizations')
   ou_r = client.list_accounts_for_parent(ParentId=ou_id)
@@ -168,10 +168,10 @@ def init_tree(aws_id):
   initializes the OU tree datastructure
 
   args:
-    - aws_id:  the AWS ID of the root consolidated billing account
+    aws_id:  the AWS ID of the root consolidated billing account
 
   returns:
-    - root Node object
+    root Node object
   """
   root_ou = get_root_ou_id(aws_id)
   root = tree.Node(id=root_ou[0], name=root_ou[1])
@@ -219,11 +219,11 @@ def generate_simple_report(user_dict, limit, display_ids):
   generate the billing report, categorized by OU.
 
   args:
-    - user_dict:    dict of all users and individual total spends
-    - limit:        display only amounts greater then this in the report.
-                    the amount still counts towards the totals.
-    - display_ids:  display each user's AWS ID after their name
-    - full:         boolean.  generate a full report.
+    user_dict:    dict of all users and individual total spends
+    limit:        display only amounts greater then this in the report.
+                  the amount still counts towards the totals.
+    display_ids:  display each user's AWS ID after their name
+    full:         boolean.  generate a full report.
   """
   locale.setlocale(locale.LC_ALL, '') # for comma formatting
   total_spend = 0
@@ -265,8 +265,8 @@ def send_email(report, weekly):
   defined in emailsettings.py.
 
   args:
-    - report:  the raw string containing the final report
-    - weekly:  boolean, if true use weekly email formatting.  if false, use
+    report:  the raw string containing the final report
+    weekly:  boolean, if true use weekly email formatting.  if false, use
                monthly.
   """
   if weekly:

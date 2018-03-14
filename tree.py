@@ -6,6 +6,9 @@ import weakref
 
 # TODO: FIX TAB FORMATTING FOR THE LOVE OF ALL THATS HOLY
 class Node(object):
+    """
+    an n-ary tree implementation to store AWS OU and account information
+    """
     def __init__(self, id=None, name=None, children=None, accounts=None,
                  node_spend=0, parent=None):
         self.id = id
@@ -29,11 +32,31 @@ class Node(object):
             yield child
 
     def add_child(self, id=None, name=None):
+        """
+        adds an OU child to the parent node
+
+        args:
+          id:    AWS ID for the new child
+          name:  human readable name of the child
+
+        returns:
+          child: new child object
+        """
         child = Node(id=id, name=name, parent=self)
         self.children.append(child)
         return child
 
     def add_account(self, account=None):
+        """
+        adds an AWS account to the leaf of the tree and adds the account spend
+        to the node spend (as well as adding up to the root node)
+
+        args:
+          account: tuple of (account id, real name, account spend, currency)
+
+        returns:
+          account: tuple of (account id, real name, account spend, currency)
+        """
         self.accounts.append(account)
         self.node_spend = self.node_spend + account[2]
         parent = self.parent
@@ -50,6 +73,15 @@ class Node(object):
         return self.children
 
     def get_parent_path(self):
+        """
+        get the path from root to the current node
+
+        args:
+          none
+
+        returns:
+          parent_path:  list containing path from root to the current node
+        """
         if self.parent is None:
             return
 
@@ -62,7 +94,17 @@ class Node(object):
         parent_path.reverse()
         return parent_path
 
-    def print_tree(self, limit=0.0, display_ids=None, parent=None):
+    def print_tree(self, limit=0.0, display_ids=None):
+        """
+        prints out the tree, including some formatting
+
+        args:
+          limit:       float of the minimum amount to display
+          display_ids: flag to display the AWS ID after the name
+
+        returns:
+          none
+        """
         limit = float(limit) or 0.0
         if self.accounts:
             locale.setlocale(locale.LC_ALL, '')
