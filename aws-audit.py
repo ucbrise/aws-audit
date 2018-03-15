@@ -269,7 +269,7 @@ def add_leavers(root, user_dict):
       if not leavers_node_added:
         leavers_node_added = True
         leavers_node = root.add_child(id='leavers',
-                                      name='Left AWS Organization')
+                                      name='No Longer in AWS Organization')
 
       leavers_node.add_account(AccountInfo(id=id,
                                    name=user_dict[id]['name'],
