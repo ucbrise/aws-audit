@@ -57,10 +57,10 @@ class Node(object):
       account: tuple of (account id, real name, account spend, currency)
     """
     self.accounts.append(account)
-    self.node_spend = self.node_spend + account[2]
+    self.node_spend = self.node_spend + account.total
     parent = self.parent
     while parent is not None:
-      parent.node_spend = parent.node_spend + account[2]
+      parent.node_spend = parent.node_spend + account.total
       parent = parent.parent
 
     return account
@@ -120,19 +120,19 @@ class Node(object):
         print(name, node_spend, 'USD')
 
       for account in self.get_accounts():
-        if account[2] >= limit:
-          account_spend = locale.format('%.2f', account[2], grouping=True)
+        if account.total >= limit:
+          account_spend = locale.format('%.2f', account.total, grouping=True)
           account_spend = '$' + str(account_spend)
           if display_ids:
             id = '(' + account[0] + ')'
-            print('{:25}\t({})\t{} {}'.format(account[1],
-                                              account[0],
+            print('{:25}\t({})\t{} {}'.format(account.name,
+                                              account.id,
                                               account_spend,
-                                              account[3]))
+                                              account.currency))
           else:
-            print('{:25}\t\t{} {}'.format(account[1],
+            print('{:25}\t\t{} {}'.format(account.name,
                                           account_spend,
-                                          account[3]))
+                                          account.currency))
 
       print()
 

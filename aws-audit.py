@@ -31,6 +31,14 @@ logging.basicConfig(level=logging.WARN, format='%(asctime)s - %(levelname)s - %(
 #
 import emailsettings
 
+locale.setlocale(locale.LC_ALL, '') # for comma formatting
+
+# set up named tuples
+NodeInfo = collections.namedtuple('NodeInfo', ['id', 'name'])
+Account = collections.namedtuple('Account', ['id', 'name'])
+AccountInfo = collections.namedtuple('AccountInfo',
+                                      ['id', 'name', 'total', 'currency'])
+
 def get_latest_bill(aws_id, billing_bucket, billing_file_path, save):
   """
   get the latest billing CSV from S3 (default) or a local file.
@@ -97,7 +105,6 @@ def parse_billing_data(billing_data):
   return user_dict
 
 def get_root_ou_id(aws_id):
-  # TODO: use collections.namedtuple
   """
   get the ID of the ROOT OU
 
@@ -105,15 +112,14 @@ def get_root_ou_id(aws_id):
     aws_id:  AWS account number
 
   returns:
-    ou_id:   tuple containing ID number of the ROOT OU and 'ROOT'
+    namedtuple (id, name) with ID number of the ROOT OU and 'ROOT'
   """
   client = boto3.client('organizations')
   ou_r = client.list_roots()
 
-  return (ou_r['Roots'][0]['Id'], 'ROOT')
+  return NodeInfo(id=ou_r['Roots'][0]['Id'], name='ROOT')
 
 def get_ou_children(ou_id):
-  # TODO: use collections.namedtuple
   """
   get the list of OU children for a given OU id
 
@@ -121,25 +127,27 @@ def get_ou_children(ou_id):
     ou_id:  ID number of the current OU
 
   returns:
-    children:  list of tuples containing children OU IDs and descriptive
-               name, or NoneType
+    children:  list of NodeInfo namedtuples or NoneType if no children OUs are
+               present
   """
   client = boto3.client('organizations')
   ou_r = client.list_organizational_units_for_parent(ParentId=ou_id)
 
   children = list()
+
   while True:
     for ou in ou_r['OrganizationalUnits']:
-      children.append((ou['Id'], ou['Name']))
+      children.append(NodeInfo(id=ou['Id'], name=ou['Name']))
+
     if 'NextToken' in ou_r:
       ou_r = client.list_organizational_units_for_parent(
-          ParentId=ou_id, NextToken=ou_r['NextToken'])
+        ParentId=ou_id, NextToken=ou_r['NextToken'])
     else:
       break
+
   return children or None
 
 def get_accounts_for_ou(ou_id):
-  # TODO: use collections.namedtuple
   """
   get the accounts attached to a given ou_id
 
@@ -147,21 +155,23 @@ def get_accounts_for_ou(ou_id):
     ou_id:  ID number of an OU
 
   returns:
-    accounts: list of tuples containing AWS ID and full name
+    accounts:  list of namedtuples with AWS ID and full name
   """
   client = boto3.client('organizations')
   ou_r = client.list_accounts_for_parent(ParentId=ou_id)
-  accounts = list()
 
+  accounts = list()
   while True:
     for acct in ou_r['Accounts']:
-      accounts.append((acct['Id'], acct['Name']))
+      accounts.append(Account(id=acct['Id'], name=acct['Name']))
+
     if 'NextToken' in ou_r:
       ou_r = client.list_accounts_for_parent(ParentId=ou_id,
                                              NextToken=ou_r['NextToken'])
     else:
       break
-  return accounts
+
+  return accounts or None
 
 def init_tree(aws_id):
   """
@@ -174,7 +184,7 @@ def init_tree(aws_id):
     root Node object
   """
   root_ou = get_root_ou_id(aws_id)
-  root = tree.Node(id=root_ou[0], name=root_ou[1])
+  root = tree.Node(id=root_ou.id, name=root_ou.name)
 
   return root
 
@@ -193,26 +203,79 @@ def populate_tree(tree, user_dict):
   """
   current_node = tree
   children = get_ou_children(current_node.id)
-
   accounts = get_accounts_for_ou(current_node.id)
+
   if accounts:
-    for id, name in accounts:
-      if id not in user_dict:
-        # account has zero spend!
-        current_node.add_account((id, name, 0.0))
+    for account in accounts:
+      if account.id not in user_dict:
+        # account has zero spend and not showing up in the billing CSV
+        current_node.add_account(AccountInfo(
+          id=account.id,
+          name=account.name,
+          total=0.0,
+          currency='USD')
+        )
       else:
-        total = user_dict[id]['total']
-        currency = user_dict[id]['currency']
-        current_node.add_account((id, name, total, currency))
-        #del user_dict[id]
+        current_node.add_account(AccountInfo(
+          id=account.id,
+          name=account.name,
+          total=user_dict[account.id]['total'],
+          currency=user_dict[account.id]['currency'])
+         )
 
   if children is not None:
-    for id, name in children:
-      current_node.add_child(id=id, name=name)
+    for child in children:
+      current_node.add_child(id=child.id, name=child.name)
     for child in current_node.children:
       populate_tree(child, user_dict)
 
-  return user_dict
+def get_accounts_for_org():
+  """
+  get a list of all accounts in the AWS org
+
+  returns:
+    aws_accounts:  a list of AWS account IDs
+  """
+  aws_accounts = list()
+  client = boto3.client('organizations')
+  ou_r = client.list_accounts()
+
+  while True:
+    for acct in ou_r['Accounts']:
+      aws_accounts.append(acct['Id'])
+
+    if 'NextToken' in ou_r:
+      ou_r = client.list_accounts(NextToken=ou_r['NextToken'])
+    else:
+      break
+
+  return aws_accounts
+
+def add_leavers(root, user_dict):
+  """
+  find AWS accounts that have spend in the billing CSV, but are not in the
+  consolidated billing family.  create a top-level node containing these
+  users and their spend.
+
+  args:
+    root:  the root Node of the entire OU tree
+    user_dict:  the user dict generated from the billing CSV
+  """
+  leavers_node_added = False
+  aws_accounts = get_accounts_for_org()
+
+  for id in user_dict.keys():
+    if id not in aws_accounts:
+      if not leavers_node_added:
+        leavers_node_added = True
+        leavers_node = root.add_child(id='leavers',
+                                      name='Left AWS Organization')
+
+      leavers_node.add_account(AccountInfo(id=id,
+                                   name=user_dict[id]['name'],
+                                   total=user_dict[id]['total'],
+                                   currency=user_dict[id]['currency'])
+      )
 
 def generate_simple_report(user_dict, limit, display_ids):
   """
@@ -223,9 +286,7 @@ def generate_simple_report(user_dict, limit, display_ids):
     limit:        display only amounts greater then this in the report.
                   the amount still counts towards the totals.
     display_ids:  display each user's AWS ID after their name
-    full:         boolean.  generate a full report.
   """
-  locale.setlocale(locale.LC_ALL, '') # for comma formatting
   total_spend = 0
   report = ''
   account_details = list()
@@ -395,9 +456,6 @@ Formats the email subject and body to denote an "end of month" report.
 def main():
   args = parse_args()
 
-  if args.full and not args.ou:
-    args.full = False
-
   if args.id is None and args.local is None:
     print("Please specify an AWS account id with the --id argument, " +
           "unless reading in a local billing CSV with --local <filename>.")
@@ -422,9 +480,14 @@ def main():
   if not args.ou:
     report = generate_simple_report(user_dict, args.limit, args.display_ids)
 
+  # use the OU tree, more complex report
   else:
     root = init_tree(args.id)
     populate_tree(root, user_dict)
+
+    # handle those who have left the org, but are in the billing CSV.
+    leavers = find_leavers(root, user_dict)
+
     sum_str = locale.format('%.2f', root.node_spend, grouping=True)
     report = report + \
            '== Current AWS totals:  $%s USD (only shown below: > $%s) ==\n\n' \
