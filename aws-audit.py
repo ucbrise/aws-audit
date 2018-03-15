@@ -486,7 +486,7 @@ def main():
     populate_tree(root, user_dict)
 
     # handle those who have left the org, but are in the billing CSV.
-    leavers = find_leavers(root, user_dict)
+    add_leavers(root, user_dict)
 
     sum_str = locale.format('%.2f', root.node_spend, grouping=True)
     report = report + \
