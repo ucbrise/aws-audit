@@ -9,4 +9,4 @@ SHELL=/bin/bash
 #
 # run monthly on the last day of the month
 #
-45 23 28-31 * *   [[ "$(date --date=tomorrow +\%d)" == "01" ]] && /path/to/aws-audit.py --email --weekly --id <AWS_ID> --bucket <BILLING_BUCKET> --quiet
+45 23 28-31 * *   [[ "$(date --date=tomorrow +\%d)" == "01" ]] && /path/to/aws-audit.py --email --monthly --id <AWS_ID> --bucket <BILLING_BUCKET> --quiet
