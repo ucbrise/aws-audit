@@ -120,7 +120,8 @@ class Node(object):
         print(name, node_spend, 'USD')
 
       for account in sorted(self.get_accounts(),
-                            key = lambda account: -account.total):
+                            key = lambda account: account.total,
+                            reverse = True):
         if account.total >= limit:
           account_spend = locale.format('%.2f', account.total, grouping=True)
           account_spend = '$' + str(account_spend)

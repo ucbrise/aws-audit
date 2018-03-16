@@ -302,7 +302,7 @@ def generate_simple_report(user_dict, limit, display_ids):
            '== Current AWS totals:  $%s USD (only shown below: > $%s) ==\n\n' \
            % (sum_str, limit)
 
-  for acct in sorted(account_details, key = lambda acct: -acct[2]):
+  for acct in sorted(account_details, key = lambda acct: acct[2], reverse = True):
     (acct_name, acct_num, acct_total, acct_total_currency) = acct
 
     if acct_total < limit:
