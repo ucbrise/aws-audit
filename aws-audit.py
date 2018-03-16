@@ -363,7 +363,7 @@ not displayed will still be counted towards all totals.  Default is $5.00USD.
 Generate a full report.  This option is only useful when using OUs in
 a consolidated billing setting, and the --ou option is used.  An additional
 section is added at the end of the original report that lists all users sorted
-by spend.  If the --ou argument is not set, this will be ignored.
+by spend.  If the --ou argument is not set, this option will be ignored.
                       """,
                       action="store_true")
   parser.add_argument("-e",
