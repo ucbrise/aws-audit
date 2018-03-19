@@ -17,15 +17,12 @@ import datetime
 from email.mime.text import MIMEText
 from io import StringIO
 import locale
-import logging
 import smtplib
 import socket
 import sys
 
 # support for N-ary tree data structure to support OUs
 import tree
-
-logging.basicConfig(level=logging.WARN, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # email settings:  user-defined content and server information
 #
@@ -53,8 +50,6 @@ def get_latest_bill(aws_id, billing_bucket, billing_file_path, save):
     csv object of billing data
   """
   if billing_file_path:
-    logging.debug('opening local consolidated billing CSV for reading: ' \
-                  + billing_file_path)
     f = open(billing_file_path, 'r')
     billing_data = f.read()
   else:
@@ -64,7 +59,6 @@ def get_latest_bill(aws_id, billing_bucket, billing_file_path, save):
     billing_filename =  aws_id + '-aws-billing-csv-' + \
                         year + '-' + month + '.csv'
 
-    logging.debug('retrieving consolidated billing CSV from S3: ' + billing_filename)
     s3 = boto3.resource('s3')
     b = s3.Object(billing_bucket, billing_filename)
     billing_data = b.get()['Body'].read().decode('utf-8')
