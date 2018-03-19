@@ -105,38 +105,37 @@ class Node(object):
       none
     """
     limit = float(limit) or 0.0
-    if self.accounts:
-      locale.setlocale(locale.LC_ALL, '')
-      node_spend = locale.format('%.2f', self.node_spend, grouping=True)
-      node_spend = '$' + str(node_spend)
-      name = self.name + ':'
+    locale.setlocale(locale.LC_ALL, '')
+    node_spend = locale.format('%.2f', self.node_spend, grouping=True)
+    node_spend = '$' + str(node_spend)
+    name = self.name + ':'
 
-      if self.parent is not None:
-        parent_path = self.get_parent_path()
-        parent_path = ' -> '.join(parent_path)
-        print(parent_path, '->', name, node_spend, 'USD')
-        print('==========')
-      else:
-        print(name, node_spend, 'USD')
+    if self.parent is not None:
+      parent_path = self.get_parent_path()
+      parent_path = ' -> '.join(parent_path)
+      print(parent_path, '->', name, node_spend, 'USD')
+      print('==========')
+    else:
+      print(name, node_spend, 'USD')
 
-      for account in sorted(self.get_accounts(),
-                            key = lambda account: account.total,
-                            reverse = True):
-        if account.total >= limit:
-          account_spend = locale.format('%.2f', account.total, grouping=True)
-          account_spend = '$' + str(account_spend)
-          if display_ids:
-            id = '(' + account[0] + ')'
-            print('{:25}\t({})\t{} {}'.format(account.name,
-                                              account.id,
-                                              account_spend,
-                                              account.currency))
-          else:
-            print('{:25}\t\t{} {}'.format(account.name,
-                                          account_spend,
-                                          account.currency))
+    for account in sorted(self.get_accounts(),
+                          key = lambda account: account.total,
+                          reverse = True):
+      if account.total >= limit:
+        account_spend = locale.format('%.2f', account.total, grouping=True)
+        account_spend = '$' + str(account_spend)
+        if display_ids:
+          id = '(' + account[0] + ')'
+          print('{:25}\t({})\t{} {}'.format(account.name,
+                                            account.id,
+                                            account_spend,
+                                            account.currency))
+        else:
+          print('{:25}\t\t{} {}'.format(account.name,
+                                        account_spend,
+                                        account.currency))
 
-      print()
+    print()
 
     for child in self.children:
       child.print_tree(limit, display_ids)
