@@ -125,7 +125,6 @@ class Node(object):
         account_spend = locale.format('%.2f', account.total, grouping=True)
         account_spend = '$' + str(account_spend)
         if display_ids:
-          id = '(' + account[0] + ')'
           print('{:25}\t({})\t{} {}'.format(account.name,
                                             account.id,
                                             account_spend,
