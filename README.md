@@ -19,7 +19,7 @@ User 3                   		$234.56
 Example (with OU) output:
 
 ```
-Current AWS totals:  $2,258.13 USD (only shown below: > $5.0)
+Current AWS totals:  $10,544.34 USD (only shown below: > $5.0)
 
 ROOT: $10,544.34 USD
 
