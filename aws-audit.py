@@ -195,8 +195,8 @@ def populate_tree(tree, user_dict, default_currency):
   accounts are returned.
 
   args:
-    tree:  root node object
-    user_dict:  dict created from parsing billing file
+    tree:              root node object
+    user_dict:         dict created from parsing billing file
     default_currency:  the default currency pulled from the billing CSV
   """
   current_node = tree
@@ -264,7 +264,7 @@ def add_leavers(root, user_dict):
   users and their spend.
 
   args:
-    root:  the root Node of the entire OU tree
+    root:       the root Node of the entire OU tree
     user_dict:  the user dict generated from the billing CSV
   """
   leavers_node_added = False
@@ -283,16 +283,16 @@ def add_leavers(root, user_dict):
                                    currency=user_dict[id]['currency'])
       )
 
-def generate_simple_report(user_dict, limit, display_ids, currency):
+def generate_simple_report(user_dict, limit, display_ids, default_currency):
   """
   generate the billing report, categorized by OU.
 
   args:
-    user_dict:    dict of all users and individual total spends
-    limit:        display only amounts greater then this in the report.
-                  the amount still counts towards the totals.
-    display_ids:  display each user's AWS ID after their name
-    currency:     default currency
+    user_dict:         dict of all users and individual total spends
+    limit:             display only amounts greater then this in the report.
+                         the amount still counts towards the totals.
+    display_ids:       display each user's AWS ID after their name
+    default_currency:  default currency
   """
   total_spend = 0
   report = ''
@@ -307,7 +307,7 @@ def generate_simple_report(user_dict, limit, display_ids, currency):
   sum_str = locale.format('%.2f', total_spend, grouping=True)
   report = report + \
            '== Current AWS totals:  $%s %s (only shown below: > $%s) ==\n\n' \
-           % (sum_str, currency, limit)
+           % (sum_str, default_currency, limit)
 
   for acct in sorted(account_details, key = lambda acct: acct[2], reverse = True):
     (acct_name, acct_num, acct_total, acct_total_currency) = acct
