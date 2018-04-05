@@ -53,6 +53,12 @@ Notes about OU-based output:
 * Each OU's spend is a sum of all children (accounts) spends
 * All OUs, even those w/zero spend, are displayed
 
+Caveat(s):
+* Billing data for individual [IAM roles](https://aws.amazon.com/iam/) is not
+displayed.  This is because the detailed billing reports only show the spend
+for the account that the IAM roles are a member of, not for the individual roles
+themselves.
+
 ## Installation
 You need to have python 3 and the latest version of boto3 installed via your
 package manager of choice.
