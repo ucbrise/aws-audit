@@ -9,11 +9,12 @@ class Node(object):
   an n-ary tree implementation to store AWS OU and account information
   """
   def __init__(self, id=None, name=None, children=None, accounts=None,
-               node_spend=0, parent=None):
+               node_spend=0, parent=None, currency=None):
       self.id = id
       self.node_spend = float(node_spend) or float(0)
       self.accounts = accounts or []
       self.children = children or []
+      self.currency = currency or None
       self._parent = weakref.ref(parent) if parent else None
       if self._parent is None:
         self.name = "ROOT"
@@ -30,18 +31,19 @@ class Node(object):
     for child in self.children:
       yield child
 
-  def add_child(self, id=None, name=None):
+  def add_child(self, id=None, name=None, currency=None):
     """
     adds an OU child to the parent node
 
     args:
       id:    AWS ID for the new child
       name:  human readable name of the child
+      currency:  default currency for this node
 
     returns:
       child: new child object
     """
-    child = Node(id=id, name=name, parent=self)
+    child = Node(id=id, name=name, currency=currency, parent=self)
     self.children.append(child)
     return child
 
@@ -113,10 +115,10 @@ class Node(object):
     if self.parent is not None:
       parent_path = self.get_parent_path()
       parent_path = ' -> '.join(parent_path)
-      print(parent_path, '->', name, node_spend, 'USD')
+      print(parent_path, '->', name, node_spend, self.currency)
       print('==========')
     else:
-      print(name, node_spend, 'USD')
+      print(name, node_spend, self.currency)
 
     for account in sorted(self.get_accounts(),
                           key = lambda account: account.total,

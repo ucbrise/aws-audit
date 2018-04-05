@@ -84,19 +84,24 @@ def parse_billing_data(billing_data):
   returns:
     user_dict:  dict, keyed by AWS ID, containing name, user total for all
                 services, and currency
+    currency:   string, currency used (ie: USD)
   """
   user_dict = collections.defaultdict(dict)
+  currency = ''
 
   for row in billing_data:
     if len(row) < 4:
       continue
     if row[3] == 'AccountTotal':
+      if not currency:
+        currency = row[23]
+
       acct_num = row[2]
       user_dict[acct_num]['name'] = row[9]
       user_dict[acct_num]['total'] = float(row[24])
       user_dict[acct_num]['currency'] = row[23]
 
-  return user_dict
+  return user_dict, currency
 
 def get_root_ou_id(aws_id):
   """
@@ -167,22 +172,23 @@ def get_accounts_for_ou(ou_id):
 
   return accounts or None
 
-def init_tree(aws_id):
+def init_tree(aws_id, default_currency):
   """
   initializes the OU tree datastructure
 
   args:
     aws_id:  the AWS ID of the root consolidated billing account
+    default_currency:  the default currency
 
   returns:
     root Node object
   """
   root_ou = get_root_ou_id(aws_id)
-  root = tree.Node(id=root_ou.id, name=root_ou.name)
+  root = tree.Node(id=root_ou.id, name=root_ou.name, currency=default_currency)
 
   return root
 
-def populate_tree(tree, user_dict):
+def populate_tree(tree, user_dict, default_currency):
   """
   populates the OU-based tree, mapping account/OU to billing data.  if users
   are in the bill, but not in the AWS org (due to leaving), the left-over
@@ -191,9 +197,7 @@ def populate_tree(tree, user_dict):
   args:
     tree:  root node object
     user_dict:  dict created from parsing billing file
-
-  returns:
-    user_dict:  dict containing left-over users
+    default_currency:  the default currency pulled from the billing CSV
   """
   current_node = tree
   children = get_ou_children(current_node.id)
@@ -207,7 +211,7 @@ def populate_tree(tree, user_dict):
           id=account.id,
           name=account.name,
           total=0.0,
-          currency='USD')
+          currency=default_currency)
         )
       else:
         current_node.add_account(AccountInfo(
@@ -219,9 +223,17 @@ def populate_tree(tree, user_dict):
 
   if children is not None:
     for child in children:
-      current_node.add_child(id=child.id, name=child.name)
+      current_node.add_child(
+        id=child.id,
+        name=child.name,
+        currency=default_currency
+      )
     for child in current_node.children:
-      populate_tree(child, user_dict)
+      populate_tree(
+        child,
+        user_dict,
+        default_currency
+      )
 
 def get_accounts_for_org():
   """
@@ -271,7 +283,7 @@ def add_leavers(root, user_dict):
                                    currency=user_dict[id]['currency'])
       )
 
-def generate_simple_report(user_dict, limit, display_ids):
+def generate_simple_report(user_dict, limit, display_ids, currency):
   """
   generate the billing report, categorized by OU.
 
@@ -280,6 +292,7 @@ def generate_simple_report(user_dict, limit, display_ids):
     limit:        display only amounts greater then this in the report.
                   the amount still counts towards the totals.
     display_ids:  display each user's AWS ID after their name
+    currency:     default currency
   """
   total_spend = 0
   report = ''
@@ -293,8 +306,8 @@ def generate_simple_report(user_dict, limit, display_ids):
 
   sum_str = locale.format('%.2f', total_spend, grouping=True)
   report = report + \
-           '== Current AWS totals:  $%s USD (only shown below: > $%s) ==\n\n' \
-           % (sum_str, limit)
+           '== Current AWS totals:  $%s %s (only shown below: > $%s) ==\n\n' \
+           % (sum_str, currency, limit)
 
   for acct in sorted(account_details, key = lambda acct: acct[2], reverse = True):
     (acct_name, acct_num, acct_total, acct_total_currency) = acct
@@ -403,8 +416,8 @@ will still run successfully but will take much longer to complete.
   parser.add_argument("-l",
                       "--limit",
                       help="""
-Do not display spends less than this value in USD on the report.  Any spends
-not displayed will still be counted towards all totals.  Default is $5.00USD.
+Do not display spends less than this value on the report.  Any spends not
+displayed will still be counted towards all totals.  Default is 5.00.
                       """,
                       type=float,
                       default=5.0)
@@ -468,24 +481,29 @@ def main():
 
   report = ''
   billing_data = get_latest_bill(args.id, args.bucket, args.local, args.save)
-  user_dict = parse_billing_data(billing_data)
+  user_dict, currency = parse_billing_data(billing_data)
 
   # no OU tree, just spew out the report
   if not args.ou:
-    report = generate_simple_report(user_dict, args.limit, args.display_ids)
+    report = generate_simple_report(
+      user_dict,
+      args.limit,
+      args.display_ids,
+      currency
+    )
 
   # use the OU tree, more complex report
   else:
-    root = init_tree(args.id)
-    populate_tree(root, user_dict)
+    root = init_tree(args.id, currency)
+    populate_tree(root, user_dict, currency)
 
     # handle those who have left the org, but are in the billing CSV.
     add_leavers(root, user_dict)
 
     sum_str = locale.format('%.2f', root.node_spend, grouping=True)
     report = report + \
-           '== Current AWS totals:  $%s USD (only shown below: > $%s) ==\n\n' \
-           % (sum_str, args.limit)
+           '== Current AWS totals:  $%s %s (only shown below: > $%s) ==\n\n' \
+           % (sum_str, currency, args.limit)
 
     old_stdout = sys.stdout
     tree_output = StringIO()
@@ -499,8 +517,12 @@ def main():
     # add the basic report to the end if desired
     if args.full:
       report = report + '\n\n'
-      report = report + generate_simple_report(user_dict, args.limit,
-                                               args.display_ids)
+      report = report + generate_simple_report(
+        user_dict,
+        args.limit,
+        args.display_ids,
+        currency
+      )
 
   if not args.quiet:
     print(report)
