@@ -478,6 +478,11 @@ def main():
           "<filename>.")
     sys.exit(-1)
 
+  if args.id is None and args.ou is not None:
+    print("You must supply an AWS account id with the --id argument when " +
+          "using the --ou argument.")
+    sys.exit(-1)
+
   if args.email and (not args.weekly and not args.monthly):
     print("Please specify the frequency formatting of the email using " +
           "--weekly or --monthly")
