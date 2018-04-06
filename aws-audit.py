@@ -257,7 +257,7 @@ def get_accounts_for_org():
 
   return aws_accounts
 
-def add_leavers(root, user_dict):
+def add_leavers(root, user_dict, default_currency):
   """
   find AWS accounts that have spend in the billing CSV, but are not in the
   consolidated billing family.  create a top-level node containing these
@@ -266,6 +266,7 @@ def add_leavers(root, user_dict):
   args:
     root:       the root Node of the entire OU tree
     user_dict:  the user dict generated from the billing CSV
+    default_currency:  the default currency
   """
   leavers_node_added = False
   aws_accounts = get_accounts_for_org()
@@ -275,12 +276,15 @@ def add_leavers(root, user_dict):
       if not leavers_node_added:
         leavers_node_added = True
         leavers_node = root.add_child(id='leavers',
-                                      name='No Longer in AWS Organization')
+                                      name='No Longer in AWS Organization',
+                                      currency=default_currency
+        )
 
-      leavers_node.add_account(AccountInfo(id=id,
-                                   name=user_dict[id]['name'],
-                                   total=user_dict[id]['total'],
-                                   currency=user_dict[id]['currency'])
+      leavers_node.add_account(AccountInfo(
+        id=id,
+        name=user_dict[id]['name'],
+        total=user_dict[id]['total'],
+        currency=user_dict[id]['currency'])
       )
 
 def generate_simple_report(user_dict, limit, display_ids, default_currency):
@@ -498,7 +502,7 @@ def main():
     populate_tree(root, user_dict, currency)
 
     # handle those who have left the org, but are in the billing CSV.
-    add_leavers(root, user_dict)
+    add_leavers(root, user_dict, currency)
 
     sum_str = locale.format('%.2f', root.node_spend, grouping=True)
     report = report + \
