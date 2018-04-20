@@ -9,7 +9,6 @@
 # is the formatting of the email subject and preamble.
 #
 import argparse
-from botocore.exceptions import ClientError
 import collections
 from email.mime.text import MIMEText
 from io import StringIO

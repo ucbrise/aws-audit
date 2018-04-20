@@ -1,7 +1,6 @@
 """
 inspiration from https://github.com/lianemeth/forest/blob/master/forest/NaryTree.py
 """
-import config
 import locale
 import weakref
 
