@@ -9,11 +9,8 @@
 # is the formatting of the email subject and preamble.
 #
 import argparse
-import boto3
 from botocore.exceptions import ClientError
 import collections
-import csv
-import datetime
 from email.mime.text import MIMEText
 from io import StringIO
 import locale
@@ -21,58 +18,19 @@ import smtplib
 import socket
 import sys
 
+# basic config import (namedtuple setup)
+import config
+
+# common aws utilities
+import awslib
+
 # support for N-ary tree data structure to support OUs
 import tree
 
 # email settings:  user-defined content and server information
-#
 import emailsettings
 
 locale.setlocale(locale.LC_ALL, '') # for comma formatting
-
-# set up named tuples
-NodeInfo = collections.namedtuple('NodeInfo', ['id', 'name'])
-Account = collections.namedtuple('Account', ['id', 'name'])
-AccountInfo = collections.namedtuple('AccountInfo',
-                                      ['id', 'name', 'total', 'currency'])
-
-def get_latest_bill(aws_id, billing_bucket, billing_file_path, save):
-  """
-  get the latest billing CSV from S3 (default) or a local file.
-  args:
-    aws_id:             AWS account number
-    billing_bucket:     name of the billing bucket
-    billing_file_path:  full path to consolidated billing file on a local
-                        FS (optional)
-    save:               save the CSV to disk with the default filename
-
-  returns:
-    csv object of billing data
-  """
-  if billing_file_path:
-    f = open(billing_file_path, 'r')
-    billing_data = f.read()
-  else:
-    today = datetime.date.today()
-    month = today.strftime('%m')
-    year = today.strftime('%Y')
-    billing_filename =  aws_id + '-aws-billing-csv-' + \
-                        year + '-' + month + '.csv'
-
-    s3 = boto3.resource('s3')
-    b = s3.Object(billing_bucket, billing_filename)
-    billing_data = b.get()['Body'].read().decode('utf-8')
-
-    if not billing_data:
-      print("unable to find billing data (%s) in your bucket!" % billing_filename)
-      sys.exit(-1)
-
-  if (save):
-    f = open(billing_filename, 'w')
-    f.write(billing_data)
-    f.close
-
-  return csv.reader(billing_data.split('\n'))
 
 def parse_billing_data(billing_data):
   """
@@ -103,75 +61,6 @@ def parse_billing_data(billing_data):
 
   return user_dict, currency
 
-def get_root_ou_id(aws_id):
-  """
-  get the ID of the ROOT OU
-
-  args:
-    aws_id:  AWS account number
-
-  returns:
-    namedtuple (id, name) with ID number of the ROOT OU and 'ROOT'
-  """
-  client = boto3.client('organizations')
-  ou_r = client.list_roots()
-
-  return NodeInfo(id=ou_r['Roots'][0]['Id'], name='ROOT')
-
-def get_ou_children(ou_id):
-  """
-  get the list of OU children for a given OU id
-
-  args:
-    ou_id:  ID number of the current OU
-
-  returns:
-    children:  list of NodeInfo namedtuples or NoneType if no children OUs are
-               present
-  """
-  client = boto3.client('organizations')
-  ou_r = client.list_organizational_units_for_parent(ParentId=ou_id)
-
-  children = list()
-
-  while True:
-    for ou in ou_r['OrganizationalUnits']:
-      children.append(NodeInfo(id=ou['Id'], name=ou['Name']))
-
-    if 'NextToken' in ou_r:
-      ou_r = client.list_organizational_units_for_parent(
-        ParentId=ou_id, NextToken=ou_r['NextToken'])
-    else:
-      break
-
-  return children or None
-
-def get_accounts_for_ou(ou_id):
-  """
-  get the accounts attached to a given ou_id
-
-  args:
-    ou_id:  ID number of an OU
-
-  returns:
-    accounts:  list of namedtuples with AWS ID and full name
-  """
-  client = boto3.client('organizations')
-  ou_r = client.list_accounts_for_parent(ParentId=ou_id)
-
-  accounts = list()
-  while True:
-    for acct in ou_r['Accounts']:
-      accounts.append(Account(id=acct['Id'], name=acct['Name']))
-
-    if 'NextToken' in ou_r:
-      ou_r = client.list_accounts_for_parent(ParentId=ou_id,
-                                             NextToken=ou_r['NextToken'])
-    else:
-      break
-
-  return accounts or None
-
 def init_tree(aws_id, default_currency):
   """
   initializes the OU tree datastructure
@@ -183,7 +72,7 @@ def init_tree(aws_id, default_currency):
   returns:
     root Node object
   """
-  root_ou = get_root_ou_id(aws_id)
+  root_ou = awslib.get_root_ou_id(aws_id)
   root = tree.Node(id=root_ou.id, name=root_ou.name, currency=default_currency)
 
   return root
@@ -200,21 +89,21 @@ def populate_tree(tree, user_dict, default_currency):
     default_currency:  the default currency pulled from the billing CSV
   """
   current_node = tree
-  children = get_ou_children(current_node.id)
-  accounts = get_accounts_for_ou(current_node.id)
+  children = awslib.get_ou_children(current_node.id)
+  accounts = awslib.get_accounts_for_ou(current_node.id)
 
   if accounts:
     for account in accounts:
       if account.id not in user_dict:
         # account has zero spend and not showing up in the billing CSV
-        current_node.add_account(AccountInfo(
+        current_node.add_account(config.AccountInfo(
           id=account.id,
           name=account.name,
           total=0.0,
           currency=default_currency)
         )
       else:
-        current_node.add_account(AccountInfo(
+        current_node.add_account(config.AccountInfo(
           id=account.id,
           name=account.name,
           total=user_dict[account.id]['total'],
@@ -235,28 +124,6 @@ def populate_tree(tree, user_dict, default_currency):
         default_currency
       )
 
-def get_accounts_for_org():
-  """
-  get a list of all accounts in the AWS org
-
-  returns:
-    aws_accounts:  a list of AWS account IDs
-  """
-  aws_accounts = list()
-  client = boto3.client('organizations')
-  ou_r = client.list_accounts()
-
-  while True:
-    for acct in ou_r['Accounts']:
-      aws_accounts.append(acct['Id'])
-
-    if 'NextToken' in ou_r:
-      ou_r = client.list_accounts(NextToken=ou_r['NextToken'])
-    else:
-      break
-
-  return aws_accounts
-
 def add_leavers(root, user_dict, default_currency):
   """
   find AWS accounts that have spend in the billing CSV, but are not in the
@@ -269,7 +136,7 @@ def add_leavers(root, user_dict, default_currency):
     default_currency:  the default currency
   """
   leavers_node_added = False
-  aws_accounts = get_accounts_for_org()
+  aws_accounts = awslib.get_accounts_for_org()
 
   for id in user_dict.keys():
     if id not in aws_accounts:
@@ -280,7 +147,7 @@ def add_leavers(root, user_dict, default_currency):
                                       currency=default_currency
         )
 
-      leavers_node.add_account(AccountInfo(
+      leavers_node.add_account(config.AccountInfo(
         id=id,
         name=user_dict[id]['name'],
         total=user_dict[id]['total'],
@@ -489,7 +356,7 @@ def main():
     sys.exit(-1)
 
   report = ''
-  billing_data = get_latest_bill(args.id, args.bucket, args.local, args.save)
+  billing_data = awslib.get_latest_bill(args.id, args.bucket, args.local, args.save)
   user_dict, currency = parse_billing_data(billing_data)
 
   # no OU tree, just spew out the report
