@@ -1,7 +1,7 @@
-import collections
+from collections import namedtuple
 
 # set up named tuples
-NodeInfo = collections.namedtuple('NodeInfo', ['id', 'name'])
-Account = collections.namedtuple('Account', ['id', 'name'])
-AccountInfo = collections.namedtuple('AccountInfo',
-                                     ['id', 'name', 'total', 'currency'])
+NodeInfo = namedtuple('NodeInfo', ['id', 'name'])
+Account = namedtuple('Account', ['id', 'name'])
+AccountInfo = namedtuple('AccountInfo',
+                         ['id', 'name', 'total', 'currency'])
