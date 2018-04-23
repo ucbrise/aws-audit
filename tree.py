@@ -149,6 +149,18 @@ class Node(object):
     output the ou-based spend to a CSV.  can create a new file, or append
     an existing one.
 
+    for accounts that live in the ROOT OU, the lab/PI and project fields will
+    be set to 'ROOT'.
+
+    the CSV header is defined in CSV_HEADER and can be used to customize the
+    field names you want to output.
+
+    if you want to change the fields that are printed out, please update
+    the list definitions of 'line' w/the variables you would like to display.
+
+    the default settings for this reflect the way in which our lab categorizes
+    projects, and may require tweaking for other types of orgs.
+
     args:
       limit:    only print the OU spend that's greater than this
       outfile:  name of the CSV to write to.  default is 'outfile.csv'
