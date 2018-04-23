@@ -163,7 +163,7 @@ def add_leavers(root, user_dict, default_currency):
         currency=user_dict[id]['currency'])
       )
 
-def csv_ouput(user_dict, outfile=None, limit=0.0, mon=None, year=None, append=False):
+def csv_output(user_dict, outfile=None, limit=0.0, mon=None, year=None, append=False):
   """
   output account-based spends to a CSV.  can create a new file, or append to an
   existing one.
