@@ -2,6 +2,8 @@
 inspiration from https://github.com/lianemeth/forest/blob/master/forest/NaryTree.py
 """
 import locale
+import os
+import sys
 import weakref
 
 class Node(object):
@@ -181,6 +183,8 @@ class Node(object):
 
     if outfile is None:
       outfile = CSV_OUTFILE
+
+
 
     limit = float(limit) or 0.0
     locale.setlocale(locale.LC_ALL, '')
