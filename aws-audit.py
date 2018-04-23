@@ -42,6 +42,8 @@ def parse_billing_data(billing_data):
     user_dict:  dict, keyed by AWS ID, containing name, user total for all
                 services, and currency
     currency:   string, currency used (ie: USD)
+    month:      billing month (for CSV output)
+    year:       billing year  (for CSV output)
   """
   user_dict = collections.defaultdict(dict)
   currency = ''
@@ -53,12 +55,17 @@ def parse_billing_data(billing_data):
       if not currency:
         currency = row[23]
 
+      if not month or not year:
+        date = row[6]
+        month = date[5:7]
+        year = date[0:4]
+
       acct_num = row[2]
       user_dict[acct_num]['name'] = row[9]
       user_dict[acct_num]['total'] = float(row[24])
       user_dict[acct_num]['currency'] = row[23]
 
-  return user_dict, currency
+  return user_dict, currency, month, year
 
 def init_tree(aws_id, default_currency):
   """
