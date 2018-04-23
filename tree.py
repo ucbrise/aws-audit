@@ -209,7 +209,7 @@ class Node(object):
           writer.writerow(line)
 
     for child in self.children:
-      child.print_project_csv(
+      child.csv_output(
         limit=limit,
         outfile=outfile,
         month=month,
