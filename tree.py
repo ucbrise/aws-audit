@@ -142,3 +142,76 @@ class Node(object):
 
     for child in self.children:
       child.print_tree(limit, display_ids)
+
+  def csv_output(self, limit=0.0, outfile=None, month=None, year=None, append=False):
+    """
+    output the ou-based spend to a CSV.  can create a new file, or append
+    an existing one.
+
+    args:
+      limit:    only print the OU spend that's greater than this
+      outfile:  name of the CSV to write to.  default is 'outfile.csv'
+      month:    month of the report (gleaned from the billing CSV)
+      year:     year of the report (gleaned from the billing CSV)
+      append:   if False, create a new file (default).
+    """
+    CSV_OUTFILE = 'output.csv'
+    CSV_HEADER = ['year', 'month', 'lab or PI', 'project', 'spend', 'num accounts']
+
+    if month is None:
+      print('need a month')
+      sys.exit(1)
+
+    if year is None:
+      print('need a year')
+      sys.exit(1)
+
+    if outfile is None:
+      outfile = CSV_OUTFILE
+
+    limit = float(limit) or 0.0
+    locale.setlocale(locale.LC_ALL, '')
+    formatted_spend = locale.format('%.2f', self.node_account_spend, grouping=True)
+    formatted_spend = '$' + str(formatted_spend)
+
+    if append is False:
+      with open(outfile, 'w', newline='') as csv_file:
+        writer = csv.writer(csv_file, delimiter=',')
+        line = CSV_HEADER
+        writer.writerow(line)
+
+    if self.node_account_spend > limit:
+      if self.parent is None:
+        with open(outfile, 'a', newline='') as csv_file:
+          writer = csv.writer(csv_file, delimiter=',')
+          line = [
+            year,
+            month,
+            self.name,
+            self.name,
+            formatted_spend,
+            len(self.accounts)
+          ]
+          writer.writerow(line)
+
+      else:
+        with open(outfile, 'a', newline='') as csv_file:
+          writer = csv.writer(csv_file, delimiter=',')
+          line = [
+            year,
+            month,
+            self.parent.name,
+            self.name,
+            formatted_spend,
+            len(self.accounts)
+          ]
+          writer.writerow(line)
+
+    for child in self.children:
+      child.print_project_csv(
+        limit=limit,
+        outfile=outfile,
+        month=month,
+        year=year,
+        append=True
+      )
