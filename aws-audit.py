@@ -365,7 +365,7 @@ def main():
 
   report = ''
   billing_data = awslib.get_latest_bill(args.id, args.bucket, args.local, args.save)
-  user_dict, currency = parse_billing_data(billing_data)
+  user_dict, currency, month, year = parse_billing_data(billing_data)
 
   # no OU tree, just spew out the report
   if not args.ou:
