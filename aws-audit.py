@@ -319,7 +319,24 @@ by spend.  If the --ou argument is not set, this option will be ignored.
 Send the report as an email, using the settings defined in emailsettings.py.
                       """,
                       action="store_true")
+  parser.add_argument("-O",
+                      "--orgcsv",
+                      help="""
+Output org/project-based spends to a CSV.  If FILENAME exists, the script
+will append to the file instead of creating a new one.
+                      """,
+                      type=str,
+                      metavar="FILENAME")
+  parser.add_argument("-C",
+                      "--csv",
+                      help="""
+Output account-based spends to a CSV.  If FILENAME exists, the script
+will append to the file instead of creating a new one.
+                      """,
+                      type=str,
+                      metavar="FILENAME")
 
+  # monthly or weekly style email reports
   frequency = parser.add_mutually_exclusive_group()
   frequency.add_argument("-w",
                          "--weekly",
