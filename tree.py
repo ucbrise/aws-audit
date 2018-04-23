@@ -184,8 +184,6 @@ class Node(object):
     if outfile is None:
       outfile = CSV_OUTFILE
 
-
-
     limit = float(limit) or 0.0
     locale.setlocale(locale.LC_ALL, '')
     formatted_spend = locale.format('%.2f', self.node_account_spend, grouping=True)
