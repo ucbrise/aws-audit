@@ -47,6 +47,8 @@ def parse_billing_data(billing_data):
   """
   user_dict = collections.defaultdict(dict)
   currency = ''
+  month = ''
+  year = ''
 
   for row in billing_data:
     if len(row) < 4:
