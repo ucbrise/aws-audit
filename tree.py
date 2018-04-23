@@ -143,7 +143,8 @@ class Node(object):
     for child in self.children:
       child.print_tree(limit, display_ids)
 
-  def csv_output(self, limit=0.0, outfile=None, month=None, year=None, append=False):
+  def csv_output(self, limit=0.0, outfile=None, month=None, year=None,
+                 append=False):
     """
     output the ou-based spend to a CSV.  can create a new file, or append
     an existing one.
