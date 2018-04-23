@@ -13,6 +13,7 @@ import collections
 from email.mime.text import MIMEText
 from io import StringIO
 import locale
+import os
 import smtplib
 import socket
 import sys
@@ -161,6 +162,69 @@ def add_leavers(root, user_dict, default_currency):
         total=user_dict[id]['total'],
         currency=user_dict[id]['currency'])
       )
+
+def csv_ouput(user_dict, outfile=None, limit=0.0, mon=None, year=None, append=False):
+  """
+  output account-based spends to a CSV.  can create a new file, or append to an
+  existing one.
+
+  the CSV header is defined in CSV_HEADER and can be used to customize the
+  field names you want to output.
+
+  if you want to change the fields that are printed out, please update
+  the list definitions of 'line' w/the variables you would like to display.
+
+  the default settings for this reflect the way in which our lab categorizes
+  projects, and may require tweaking for other types of orgs.
+
+  args:
+    limit:    only print the OU spend that's greater than this
+    outfile:  name of the CSV to write to.  default is 'outfile.csv'
+    month:    month of the report (gleaned from the billing CSV)
+    year:     year of the report (gleaned from the billing CSV)
+    append:   if False, create a new file (default).
+
+  """
+  account_details = list()
+
+  if mon is None:
+    print('need a month')
+    sys.exit(1)
+
+  if year is None:
+    print('need a year')
+    sys.exit(1)
+
+  if outfile is None:
+    outfile = 'output.csv'
+
+  limit = float(limit) or 0.0
+  locale.setlocale(locale.LC_ALL, '')
+
+  if append is False:
+    with open(outfile, 'w', newline='') as csv_file:
+      writer = csv.writer(csv_file, delimiter=',')
+      line = ['year', 'month', 'person', 'spend']
+      writer.writerow(line)
+
+  # for each user, get the OU that they are the member of
+  for id in user_dict.keys():
+    u = user_dict[id]
+    account_details.append((u['name'], id, u['total'], u['currency']))
+
+  for acct in sorted(account_details, key = lambda acct: acct[2], reverse = True):
+    (acct_name, acct_num, acct_total, acct_total_currency) = acct
+
+    if acct_total < limit:
+      continue
+
+    acct_total_str = locale.format("%.2f", acct_total, grouping=True)
+    acct_total_str = '$' + str(acct_total_str)
+
+    with open(outfile, 'a', newline='') as csv_file:
+      writer = csv.writer(csv_file, delimiter=',')
+      line = [year, mon, acct_name, acct_total_str]
+      writer.writerow(line)
 
 def generate_simple_report(user_dict, limit, display_ids, default_currency):
   """
