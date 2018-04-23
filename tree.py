@@ -9,9 +9,10 @@ class Node(object):
   an n-ary tree implementation to store AWS OU and account information
   """
   def __init__(self, id=None, name=None, children=None, accounts=None,
-               node_spend=0, parent=None, currency=None):
+               node_spend=0, node_account_spend=0, parent=None, currency=None):
       self.id = id
       self.node_spend = float(node_spend) or float(0)
+      self.node_account_spend = float(node_account_spend) or float(0)
       self.accounts = accounts or []
       self.children = children or []
       self.currency = currency or None
@@ -60,6 +61,7 @@ class Node(object):
     """
     self.accounts.append(account)
     self.node_spend = self.node_spend + account.total
+    self.node_account_spend = self.node_account_spend + account.total
     parent = self.parent
     while parent is not None:
       parent.node_spend = parent.node_spend + account.total
