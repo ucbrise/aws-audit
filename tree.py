@@ -145,8 +145,7 @@ class Node(object):
     for child in self.children:
       child.print_tree(limit, display_ids)
 
-  def csv_output(self, limit=0.0, outfile=None, month=None, year=None,
-                 append=False):
+  def csv_output(self, limit=0.0, outfile=None, month=None, year=None):
     """
     output the ou-based spend to a CSV.  can create a new file, or append
     an existing one.
@@ -165,12 +164,10 @@ class Node(object):
 
     args:
       limit:    only print the OU spend that's greater than this
-      outfile:  name of the CSV to write to.  default is 'outfile.csv'
+      outfile:  name of the CSV to write to.
       month:    month of the report (gleaned from the billing CSV)
       year:     year of the report (gleaned from the billing CSV)
-      append:   if False, create a new file (default).
     """
-    CSV_OUTFILE = 'output.csv'
     CSV_HEADER = ['year', 'month', 'lab or PI', 'project', 'spend', 'num accounts']
 
     if month is None:
@@ -181,14 +178,17 @@ class Node(object):
       print('need a year')
       sys.exit(1)
 
-    if outfile is None:
-      outfile = CSV_OUTFILE
+    if os.path.isfile(outfile):
+      append = True
+    else:
+      append = False
 
     limit = float(limit) or 0.0
     locale.setlocale(locale.LC_ALL, '')
     formatted_spend = locale.format('%.2f', self.node_account_spend, grouping=True)
     formatted_spend = '$' + str(formatted_spend)
 
+    # add the header to the CSV if we're creating it
     if append is False:
       with open(outfile, 'w', newline='') as csv_file:
         writer = csv.writer(csv_file, delimiter=',')
@@ -227,6 +227,5 @@ class Node(object):
         limit=limit,
         outfile=outfile,
         month=month,
-        year=year,
-        append=True
+        year=year
       )

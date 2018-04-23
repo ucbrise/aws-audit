@@ -163,7 +163,7 @@ def add_leavers(root, user_dict, default_currency):
         currency=user_dict[id]['currency'])
       )
 
-def csv_output(user_dict, outfile=None, limit=0.0, mon=None, year=None, append=False):
+def csv_output(user_dict, outfile=None, limit=0.0, mon=None, year=None):
   """
   output account-based spends to a CSV.  can create a new file, or append to an
   existing one.
@@ -179,11 +179,9 @@ def csv_output(user_dict, outfile=None, limit=0.0, mon=None, year=None, append=F
 
   args:
     limit:    only print the OU spend that's greater than this
-    outfile:  name of the CSV to write to.  default is 'outfile.csv'
+    outfile:  name of the CSV to write to.
     month:    month of the report (gleaned from the billing CSV)
     year:     year of the report (gleaned from the billing CSV)
-    append:   if False, create a new file (default).
-
   """
   account_details = list()
 
@@ -195,12 +193,15 @@ def csv_output(user_dict, outfile=None, limit=0.0, mon=None, year=None, append=F
     print('need a year')
     sys.exit(1)
 
-  if outfile is None:
-    outfile = 'output.csv'
+  if os.path.isfile(outfile):
+    append = True
+  else:
+    append = False
 
   limit = float(limit) or 0.0
   locale.setlocale(locale.LC_ALL, '')
 
+  # add the header to the CSV if we're creating it
   if append is False:
     with open(outfile, 'w', newline='') as csv_file:
       writer = csv.writer(csv_file, delimiter=',')
