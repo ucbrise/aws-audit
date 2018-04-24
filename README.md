@@ -90,9 +90,9 @@ and will either append to an existing file or create a new one.
 * If you automate execution of this tool via cron, you can use shell magic to autogenerate
 new CSV filenames based on things like the current date.
 * By default, all accounts and project spends will be displayed.  This can be changed by
-adding `limit=<some value>` in the `aws-audit.py`, lines [499](https://github.com/ucbrise/aws-audit/blob/be631849f82482860f9d8899ec8721238515cf3c/aws-audit.py#L499) and [502](https://github.com/ucbrise/aws-audit/blob/be631849f82482860f9d8899ec8721238515cf3c/aws-audit.py#L502).
+adding `limit=<some value>` in the `aws-audit.py`, lines [499](https://github.com/ucbrise/aws-audit/blob/8b6231d6ee4463d3f56f4cbba15c5555e3370069/aws-audit.py#L499) and [502](https://github.com/ucbrise/aws-audit/blob/be631849f82482860f9d8899ec8721238515cf3c/aws-audit.py#L502).
 * The fields in the CSV, as well as the headers, can be customized.  For non-OU CSV
-format changes, please look in `aws-audit.py`, in the [generate_simple_csv](https://github.com/ucbrise/aws-audit/blob/be631849f82482860f9d8899ec8721238515cf3c/aws-audit.py#L167) function.  For OU/project-based reports, look at [generate_project_csv](https://github.com/ucbrise/aws-audit/blob/be631849f82482860f9d8899ec8721238515cf3c/tree.py#L150)
+format changes, please look in `aws-audit.py`, in the [generate_simple_csv](https://github.com/ucbrise/aws-audit/blob/8b6231d6ee4463d3f56f4cbba15c5555e3370069/aws-audit.py#L167) function.  For OU/project-based reports, look at [generate_project_csv](https://github.com/ucbrise/aws-audit/blob/8b6231d6ee4463d3f56f4cbba15c5555e3370069/tree.py#L150)
 
 Caveat(s):
 * Billing data for individual [IAM roles](https://aws.amazon.com/iam/) is not
