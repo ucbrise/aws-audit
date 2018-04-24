@@ -163,7 +163,8 @@ def add_leavers(root, user_dict, default_currency):
         currency=user_dict[id]['currency'])
       )
 
-def csv_output(user_dict, outfile=None, limit=0.0, mon=None, year=None):
+def generate_simple_csv(user_dict, outfile=None, limit=0.0,
+                        month=None, year=None):
   """
   output account-based spends to a CSV.  can create a new file, or append to an
   existing one.
@@ -183,29 +184,21 @@ def csv_output(user_dict, outfile=None, limit=0.0, mon=None, year=None):
     month:    month of the report (gleaned from the billing CSV)
     year:     year of the report (gleaned from the billing CSV)
   """
+  CSV_HEADER = ['year', 'month', 'person', 'spend']
   account_details = list()
-
-  if mon is None:
-    print('need a month')
-    sys.exit(1)
-
-  if year is None:
-    print('need a year')
-    sys.exit(1)
+  limit = float(limit) or 0.0
+  locale.setlocale(locale.LC_ALL, '')
 
   if os.path.isfile(outfile):
     append = True
   else:
     append = False
 
-  limit = float(limit) or 0.0
-  locale.setlocale(locale.LC_ALL, '')
-
   # add the header to the CSV if we're creating it
   if append is False:
     with open(outfile, 'w', newline='') as csv_file:
       writer = csv.writer(csv_file, delimiter=',')
-      line = ['year', 'month', 'person', 'spend']
+      line = CSV_HEADER
       writer.writerow(line)
 
   # for each user, get the OU that they are the member of
@@ -234,7 +227,7 @@ def generate_simple_report(user_dict, limit, display_ids, default_currency):
   args:
     user_dict:         dict of all users and individual total spends
     limit:             display only amounts greater then this in the report.
-                         the amount still counts towards the totals.
+                       default is 0 (all accounts shown)
     display_ids:       display each user's AWS ID after their name
     default_currency:  default currency
   """
@@ -445,6 +438,14 @@ def main():
           "--weekly or --monthly")
     sys.exit(-1)
 
+  if args.orgcsv and args.ou is None:
+    print("You must specify the --ou argument to use the --orgcsv option.")
+    sys.exit(-1)
+
+  if args.csv == args.orgcsv:
+    print("Please use different filenames for the --csv and --orgcsv options.")
+    sys.exit(-1)
+
   report = ''
   billing_data = awslib.get_latest_bill(args.id, args.bucket, args.local, args.save)
   user_dict, currency, month, year = parse_billing_data(billing_data)
@@ -489,6 +490,12 @@ def main():
         args.display_ids,
         currency
       )
+
+  if args.csv:
+    generate_simple_csv(user_dict, outfile=args.csv, month=month, year=year)
+
+  if args.orgcsv:
+    root.generate_project_csv(outfile=args.orgcsv, month=month, year=year)
 
   if not args.quiet:
     print(report)
