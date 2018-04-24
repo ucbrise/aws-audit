@@ -10,9 +10,11 @@
 #
 import argparse
 import collections
+import csv
 from email.mime.text import MIMEText
 from io import StringIO
 import locale
+import os
 import smtplib
 import socket
 import sys
@@ -42,9 +44,13 @@ def parse_billing_data(billing_data):
     user_dict:  dict, keyed by AWS ID, containing name, user total for all
                 services, and currency
     currency:   string, currency used (ie: USD)
+    month:      billing month (for CSV output)
+    year:       billing year  (for CSV output)
   """
   user_dict = collections.defaultdict(dict)
   currency = ''
+  month = ''
+  year = ''
 
   for row in billing_data:
     if len(row) < 4:
@@ -53,12 +59,17 @@ def parse_billing_data(billing_data):
       if not currency:
         currency = row[23]
 
+      if not month or not year:
+        date = row[6]
+        month = date[5:7]
+        year = date[0:4]
+
       acct_num = row[2]
       user_dict[acct_num]['name'] = row[9]
       user_dict[acct_num]['total'] = float(row[24])
       user_dict[acct_num]['currency'] = row[23]
 
-  return user_dict, currency
+  return user_dict, currency, month, year
 
 def init_tree(aws_id, default_currency):
   """
@@ -153,6 +164,62 @@ def add_leavers(root, user_dict, default_currency):
         currency=user_dict[id]['currency'])
       )
 
+def generate_simple_csv(user_dict, outfile=None, limit=0.0,
+                        month=None, year=None):
+  """
+  output account-based spends to a CSV.  can create a new file, or append to an
+  existing one.
+
+  the CSV header is defined in CSV_HEADER and can be used to customize the
+  field names you want to output.
+
+  if you want to change the fields that are printed out, please update
+  the list definitions of 'line' w/the variables you would like to display.
+
+  the default settings for this reflect the way in which our lab categorizes
+  projects, and may require tweaking for other types of orgs.
+
+  args:
+    limit:    only print the OU spend that's greater than this
+    outfile:  name of the CSV to write to.
+    month:    month of the report (gleaned from the billing CSV)
+    year:     year of the report (gleaned from the billing CSV)
+  """
+  CSV_HEADER = ['year', 'month', 'person', 'spend']
+  account_details = list()
+  limit = float(limit) or 0.0
+  locale.setlocale(locale.LC_ALL, '')
+
+  if os.path.isfile(outfile):
+    append = True
+  else:
+    append = False
+
+  # add the header to the CSV if we're creating it
+  if append is False:
+    with open(outfile, 'w', newline='') as csv_file:
+      writer = csv.writer(csv_file, delimiter=',')
+      writer.writerow(CSV_HEADER)
+
+  # for each user, get the OU that they are the member of
+  for id in user_dict.keys():
+    u = user_dict[id]
+    account_details.append((u['name'], id, u['total'], u['currency']))
+
+  for acct in sorted(account_details, key = lambda acct: acct[2], reverse = True):
+    (acct_name, acct_num, acct_total, acct_total_currency) = acct
+
+    if acct_total < limit:
+      continue
+
+    acct_total_str = locale.format("%.2f", acct_total, grouping=True)
+    acct_total_str = '$' + str(acct_total_str)
+
+    with open(outfile, 'a', newline='') as csv_file:
+      writer = csv.writer(csv_file, delimiter=',')
+      line = [year, month, acct_name, acct_total_str]
+      writer.writerow(line)
+
 def generate_simple_report(user_dict, limit, display_ids, default_currency):
   """
   generate the billing report, categorized by OU.
@@ -160,7 +227,7 @@ def generate_simple_report(user_dict, limit, display_ids, default_currency):
   args:
     user_dict:         dict of all users and individual total spends
     limit:             display only amounts greater then this in the report.
-                         the amount still counts towards the totals.
+                       default is 0 (all accounts shown)
     display_ids:       display each user's AWS ID after their name
     default_currency:  default currency
   """
@@ -175,8 +242,7 @@ def generate_simple_report(user_dict, limit, display_ids, default_currency):
     account_details.append((u['name'], id, u['total'], u['currency']))
 
   sum_str = locale.format('%.2f', total_spend, grouping=True)
-  report = report + \
-           '== Current AWS totals:  $%s %s (only shown below: > $%s) ==\n\n' \
+  report = "== Current AWS totals:  $%s %s (only shown below: > $%s) ==\n\n" \
            % (sum_str, default_currency, limit)
 
   for acct in sorted(account_details, key = lambda acct: acct[2], reverse = True):
@@ -232,7 +298,7 @@ def send_email(report, weekly):
 def parse_args():
   desc = """
 Download, parse and create reports for general AWS spend, optionally
-sending the report as an e-mail.
+sending the report as an e-mail and/or output CSV-based spending data.
   """
   epil = """
 Please refer to README.md for more detailed usage instructions and examples.
@@ -310,7 +376,24 @@ by spend.  If the --ou argument is not set, this option will be ignored.
 Send the report as an email, using the settings defined in emailsettings.py.
                       """,
                       action="store_true")
+  parser.add_argument("-O",
+                      "--orgcsv",
+                      help="""
+Output org/project-based spends to a CSV.  If FILENAME exists, the script
+will append to the file instead of creating a new one.
+                      """,
+                      type=str,
+                      metavar="FILENAME")
+  parser.add_argument("-C",
+                      "--csv",
+                      help="""
+Output account-based spends to a CSV.  If FILENAME exists, the script
+will append to the file instead of creating a new one.
+                      """,
+                      type=str,
+                      metavar="FILENAME")
 
+  # monthly or weekly style email reports
   frequency = parser.add_mutually_exclusive_group()
   frequency.add_argument("-w",
                          "--weekly",
@@ -354,9 +437,22 @@ def main():
           "--weekly or --monthly")
     sys.exit(-1)
 
+  if args.orgcsv and not args.ou:
+    print("You must specify the --ou argument to use the --orgcsv option.")
+    sys.exit(-1)
+
+  if args.csv == args.orgcsv:
+    print("Please use different filenames for the --csv and --orgcsv options.")
+    sys.exit(-1)
+
   report = ''
-  billing_data = awslib.get_latest_bill(args.id, args.bucket, args.local, args.save)
-  user_dict, currency = parse_billing_data(billing_data)
+  billing_data = awslib.get_latest_bill(
+    args.id,
+    args.bucket,
+    args.local,
+    args.save
+  )
+  user_dict, currency, month, year = parse_billing_data(billing_data)
 
   # no OU tree, just spew out the report
   if not args.ou:
@@ -398,6 +494,12 @@ def main():
         args.display_ids,
         currency
       )
+
+  if args.csv:
+    generate_simple_csv(user_dict, outfile=args.csv, month=month, year=year)
+
+  if args.orgcsv:
+    root.generate_project_csv(outfile=args.orgcsv, month=month, year=year)
 
   if not args.quiet:
     print(report)

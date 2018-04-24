@@ -1,7 +1,11 @@
 """
-inspiration from https://github.com/lianemeth/forest/blob/master/forest/NaryTree.py
+inspiration from:
+https://github.com/lianemeth/forest/blob/master/forest/NaryTree.py
 """
+import csv
 import locale
+import os
+import sys
 import weakref
 
 class Node(object):
@@ -9,9 +13,10 @@ class Node(object):
   an n-ary tree implementation to store AWS OU and account information
   """
   def __init__(self, id=None, name=None, children=None, accounts=None,
-               node_spend=0, parent=None, currency=None):
+               node_spend=0, node_account_spend=0, parent=None, currency=None):
       self.id = id
       self.node_spend = float(node_spend) or float(0)
+      self.node_account_spend = float(node_account_spend) or float(0)
       self.accounts = accounts or []
       self.children = children or []
       self.currency = currency or None
@@ -60,6 +65,7 @@ class Node(object):
     """
     self.accounts.append(account)
     self.node_spend = self.node_spend + account.total
+    self.node_account_spend = self.node_account_spend + account.total
     parent = self.parent
     while parent is not None:
       parent.node_spend = parent.node_spend + account.total
@@ -140,3 +146,83 @@ class Node(object):
 
     for child in self.children:
       child.print_tree(limit, display_ids)
+
+  def generate_project_csv(self, limit=0.0, outfile=None, month=None,
+                           year=None):
+    """
+    output the ou-based spend to a CSV.  can create a new file, or append
+    an existing one.
+
+    for accounts that live in the ROOT OU, the lab/PI and project fields will
+    be set to 'ROOT'.
+
+    the CSV header is defined in CSV_HEADER and can be used to customize the
+    field names you want to output.
+
+    if you want to change the fields that are printed out, please update
+    the list definitions of 'line' w/the variables you would like to display.
+
+    the default settings for this reflect the way in which our lab categorizes
+    projects, and may require tweaking for other types of orgs.
+
+    args:
+      limit:    only print the OU spend that's greater than this.  default is
+                0 (all projects shown regardless of spend)
+      outfile:  name of the CSV to write to.
+      month:    month of the report (gleaned from the billing CSV)
+      year:     year of the report (gleaned from the billing CSV)
+    """
+    CSV_HEADER = ['year', 'month', 'lab or PI',
+                  'project', 'spend', 'num accounts']
+
+    if os.path.isfile(outfile):
+      append = True
+    else:
+      append = False
+
+    limit = float(limit) or 0.0
+    locale.setlocale(locale.LC_ALL, '')
+    formatted_spend = locale.format('%.2f', self.node_account_spend,
+                                    grouping=True)
+    formatted_spend = '$' + str(formatted_spend)
+
+    # add the header to the CSV if we're creating it
+    if append is False:
+      with open(outfile, 'w', newline='') as csv_file:
+        writer = csv.writer(csv_file, delimiter=',')
+        writer.writerow(CSV_HEADER)
+
+    if self.node_account_spend > limit:
+      if self.parent is None:
+        with open(outfile, 'a', newline='') as csv_file:
+          writer = csv.writer(csv_file, delimiter=',')
+          line = [
+            year,
+            month,
+            self.name,
+            self.name,
+            formatted_spend,
+            len(self.accounts)
+          ]
+          writer.writerow(line)
+
+      else:
+        with open(outfile, 'a', newline='') as csv_file:
+          writer = csv.writer(csv_file, delimiter=',')
+          line = [
+            year,
+            month,
+            self.parent.name,
+            self.name,
+            formatted_spend,
+            len(self.accounts)
+          ]
+          writer.writerow(line)
+
+    for child in self.children:
+      child.generate_project_csv(
+        limit=limit,
+        outfile=outfile,
+        month=month,
+        year=year
+      )

@@ -31,7 +31,8 @@ def get_latest_bill(aws_id, billing_bucket, billing_file_path, save):
     billing_data = b.get()['Body'].read().decode('utf-8')
 
     if not billing_data:
-      print("unable to find billing data (%s) in your bucket!" % billing_filename)
+      print("unable to find billing data (%s) in your bucket!" % \
+            billing_filename)
       sys.exit(-1)
 
   if (save):
