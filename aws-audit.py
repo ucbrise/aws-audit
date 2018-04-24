@@ -10,6 +10,7 @@
 #
 import argparse
 import collections
+import csv
 from email.mime.text import MIMEText
 from io import StringIO
 import locale
@@ -198,8 +199,7 @@ def generate_simple_csv(user_dict, outfile=None, limit=0.0,
   if append is False:
     with open(outfile, 'w', newline='') as csv_file:
       writer = csv.writer(csv_file, delimiter=',')
-      line = CSV_HEADER
-      writer.writerow(line)
+      writer.writerow(CSV_HEADER)
 
   # for each user, get the OU that they are the member of
   for id in user_dict.keys():
@@ -217,7 +217,7 @@ def generate_simple_csv(user_dict, outfile=None, limit=0.0,
 
     with open(outfile, 'a', newline='') as csv_file:
       writer = csv.writer(csv_file, delimiter=',')
-      line = [year, mon, acct_name, acct_total_str]
+      line = [year, month, acct_name, acct_total_str]
       writer.writerow(line)
 
 def generate_simple_report(user_dict, limit, display_ids, default_currency):
@@ -437,7 +437,7 @@ def main():
           "--weekly or --monthly")
     sys.exit(-1)
 
-  if args.orgcsv and args.ou is None:
+  if args.orgcsv and not args.ou:
     print("You must specify the --ou argument to use the --orgcsv option.")
     sys.exit(-1)
 

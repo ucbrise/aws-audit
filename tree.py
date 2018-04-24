@@ -2,6 +2,7 @@
 inspiration from:
 https://github.com/lianemeth/forest/blob/master/forest/NaryTree.py
 """
+import csv
 import locale
 import os
 import sys
@@ -189,8 +190,7 @@ class Node(object):
     if append is False:
       with open(outfile, 'w', newline='') as csv_file:
         writer = csv.writer(csv_file, delimiter=',')
-        line = CSV_HEADER
-        writer.writerow(line)
+        writer.writerow(CSV_HEADER)
 
     if self.node_account_spend > limit:
       if self.parent is None:
@@ -220,7 +220,7 @@ class Node(object):
           writer.writerow(line)
 
     for child in self.children:
-      child.csv_output(
+      child.generate_project_csv(
         limit=limit,
         outfile=outfile,
         month=month,
