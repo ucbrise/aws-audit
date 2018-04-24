@@ -1,5 +1,6 @@
 """
-inspiration from https://github.com/lianemeth/forest/blob/master/forest/NaryTree.py
+inspiration from:
+https://github.com/lianemeth/forest/blob/master/forest/NaryTree.py
 """
 import locale
 import os
@@ -145,7 +146,8 @@ class Node(object):
     for child in self.children:
       child.print_tree(limit, display_ids)
 
-  def csv_output(self, limit=0.0, outfile=None, month=None, year=None):
+  def generate_project_csv(self, limit=0.0, outfile=None, month=None,
+                           year=None):
     """
     output the ou-based spend to a CSV.  can create a new file, or append
     an existing one.
@@ -163,20 +165,14 @@ class Node(object):
     projects, and may require tweaking for other types of orgs.
 
     args:
-      limit:    only print the OU spend that's greater than this
+      limit:    only print the OU spend that's greater than this.  default is
+                0 (all projects shown regardless of spend)
       outfile:  name of the CSV to write to.
       month:    month of the report (gleaned from the billing CSV)
       year:     year of the report (gleaned from the billing CSV)
     """
-    CSV_HEADER = ['year', 'month', 'lab or PI', 'project', 'spend', 'num accounts']
-
-    if month is None:
-      print('need a month')
-      sys.exit(1)
-
-    if year is None:
-      print('need a year')
-      sys.exit(1)
+    CSV_HEADER = ['year', 'month', 'lab or PI',
+                  'project', 'spend', 'num accounts']
 
     if os.path.isfile(outfile):
       append = True
@@ -185,7 +181,8 @@ class Node(object):
 
     limit = float(limit) or 0.0
     locale.setlocale(locale.LC_ALL, '')
-    formatted_spend = locale.format('%.2f', self.node_account_spend, grouping=True)
+    formatted_spend = locale.format('%.2f', self.node_account_spend,
+                                    grouping=True)
     formatted_spend = '$' + str(formatted_spend)
 
     # add the header to the CSV if we're creating it
