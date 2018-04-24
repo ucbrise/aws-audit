@@ -242,8 +242,7 @@ def generate_simple_report(user_dict, limit, display_ids, default_currency):
     account_details.append((u['name'], id, u['total'], u['currency']))
 
   sum_str = locale.format('%.2f', total_spend, grouping=True)
-  report = report + \
-           '== Current AWS totals:  $%s %s (only shown below: > $%s) ==\n\n' \
+  report = "== Current AWS totals:  $%s %s (only shown below: > $%s) ==\n\n" \
            % (sum_str, default_currency, limit)
 
   for acct in sorted(account_details, key = lambda acct: acct[2], reverse = True):
@@ -447,7 +446,12 @@ def main():
     sys.exit(-1)
 
   report = ''
-  billing_data = awslib.get_latest_bill(args.id, args.bucket, args.local, args.save)
+  billing_data = awslib.get_latest_bill(
+    args.id,
+    args.bucket,
+    args.local,
+    args.save
+  )
   user_dict, currency, month, year = parse_billing_data(billing_data)
 
   # no OU tree, just spew out the report
