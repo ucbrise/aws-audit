@@ -298,7 +298,7 @@ def send_email(report, weekly):
 def parse_args():
   desc = """
 Download, parse and create reports for general AWS spend, optionally
-sending the report as an e-mail.
+sending the report as an e-mail and/or output CSV-based spending data.
   """
   epil = """
 Please refer to README.md for more detailed usage instructions and examples.
