@@ -441,9 +441,10 @@ def main():
     print("You must specify the --ou argument to use the --orgcsv option.")
     sys.exit(-1)
 
-  if args.csv == args.orgcsv:
-    print("Please use different filenames for the --csv and --orgcsv options.")
-    sys.exit(-1)
+  if args.csv or args.orgcsv:
+    if args.csv == args.orgcsv:
+      print("Please use different filenames for the --csv and --orgcsv options.")
+      sys.exit(-1)
 
   report = ''
   billing_data = awslib.get_latest_bill(
