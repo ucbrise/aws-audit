@@ -277,7 +277,7 @@ def create_plots(acctcsv=None, orgcsv=None):
 
   if orgcsv is not None:
     outfile = os.path.splitext(orgcsv)[0]
-    org_plot = plots.org_spend_plot(csvfile='project_spends.csv', outputfilename=outfile)
+    org_plot = plots.org_spend_plot(csvfile=orgcsv, outputfilename=outfile)
 
   return account_plot, org_plot
 
