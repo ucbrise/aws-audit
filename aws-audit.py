@@ -269,6 +269,16 @@ def generate_simple_report(user_dict, limit, display_ids, default_currency):
   return report
 
 def create_plots(acctcsv=None, orgcsv=None):
+  """
+  create plots based on existing CSV data, and save them to the local FS.
+
+  args:
+    acctcsv:  full path to the account-based spends CSV
+    orgcsv:   full path to the org-based spends CSV
+
+  returns:
+    tuple of the full path to the plots created, or None
+  """
   account_plot = org_plot = None
 
   if acctcsv is not None:
@@ -290,6 +300,7 @@ def send_email(report, weekly, plots):
     report:  the raw string containing the final report
     weekly:  boolean, if true use weekly email formatting.  if false, use
                monthly.
+    plots:   a tuple of csv file locations used to create plots to attach
   """
   csv, orgcsv = plots
 
