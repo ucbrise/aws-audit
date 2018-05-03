@@ -6,6 +6,17 @@ import re
 import sys
 
 def account_spend_plot(csvfile=None, outputfilename=None, outputfiletype="png"):
+  """
+  creates a plot for account-based spends
+
+  args:
+    csvfile:  full path to the CSV file
+    outputfilename:  name (without extension) of the outputted plot
+    outputfiletype:  what type of file to output (default is png)
+
+  returns:
+    outfile:  full path to the created plot
+  """
   outfile = str()
   if outputfilename is None:
     print('Must specify a filename to save the plot to.')
@@ -22,6 +33,17 @@ def account_spend_plot(csvfile=None, outputfilename=None, outputfiletype="png"):
   return outfile
 
 def org_spend_plot(csvfile=None, outputfilename=None, outputfiletype="png"):
+  """
+  creates a plot for org-based spends
+
+  args:
+    csvfile:  full path to the CSV file
+    outputfilename:  name (without extension) of the outputted plot
+    outputfiletype:  what type of file to output (default is png)
+
+  returns:
+    outfile:  full path to the created plot
+  """
   outfile = str()
   if outputfilename is None:
     print('Must specify a filename to save the plot to.')
