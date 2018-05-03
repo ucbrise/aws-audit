@@ -12,6 +12,8 @@ import argparse
 import collections
 import csv
 from email.mime.text import MIMEText
+from email.mime.image import MIMEImage
+from email.mime.multipart import MIMEMultipart
 from io import StringIO
 import locale
 import os
@@ -30,6 +32,9 @@ import tree
 
 # email settings:  user-defined content and server information
 import emailsettings
+
+# create plots of csv data
+import plots
 
 locale.setlocale(locale.LC_ALL, '') # for comma formatting
 
@@ -263,7 +268,20 @@ def generate_simple_report(user_dict, limit, display_ids, default_currency):
 
   return report
 
-def send_email(report, weekly):
+def create_plots(acctcsv=None, orgcsv=None):
+  account_plot = org_plot = None
+
+  if acctcsv is not None:
+    outfile = os.path.splitext(acctcsv)[0]
+    account_plot = plots.account_spend_plot(csvfile=acctcsv, outputfilename=outfile)
+
+  if orgcsv is not None:
+    outfile = os.path.splitext(orgcsv)[0]
+    org_plot = plots.org_spend_plot(csvfile='project_spends.csv', outputfilename=outfile)
+
+  return account_plot, org_plot
+
+def send_email(report, weekly, plots):
   """
   send the report as an email, with the to:, from:, subject: and preamble
   defined in emailsettings.py.
@@ -273,6 +291,8 @@ def send_email(report, weekly):
     weekly:  boolean, if true use weekly email formatting.  if false, use
                monthly.
   """
+  csv, orgcsv = plots
+
   if weekly:
     subject = emailsettings.EMAIL_SUBJECT_WEEKLY
     preamble = emailsettings.EMAIL_PREAMBLE_WEEKLY + \
@@ -284,11 +304,27 @@ def send_email(report, weekly):
 
   report = preamble + report + "\n\n---\nSent from %s.\n" % \
            (socket.gethostname())
+  message_body = MIMEText(report)
 
-  msg = MIMEText(report)
+  msg = MIMEMultipart()
   msg['Subject'] = subject
   msg['From'] = emailsettings.EMAIL_FROM_ADDR
   msg['To'] = emailsettings.EMAIL_TO_ADDR
+  msg.attach(message_body)
+
+  if csv or orgcsv:
+    account_plot_filename, org_plot_filename = create_plots(acctcsv=csv,
+                                                            orgcsv=orgcsv)
+
+    if account_plot_filename:
+      img_data = open(account_plot_filename, 'rb').read()
+      image = MIMEImage(img_data, name=os.path.basename(account_plot_filename))
+      msg.attach(image)
+
+    if org_plot_filename:
+      img_data = open(org_plot_filename, 'rb').read()
+      image = MIMEImage(img_data, name=os.path.basename(org_plot_filename))
+      msg.attach(image)
 
   s = smtplib.SMTP(emailsettings.MAIL_SERVER)
   s.sendmail(emailsettings.EMAIL_FROM_ADDR,
@@ -392,6 +428,16 @@ will append to the file instead of creating a new one.
                       """,
                       type=str,
                       metavar="FILENAME")
+  parser.add_argument("-p",
+                      "--plot",
+                      help="""
+Create plots of CSV data.  Only useful if the --csv or --orgcsv arguments
+are used.  This will create PNG plots that are saved with the same filename
+of the CSV data and stored in the same directory where they live.  If this
+argument is specified with the --email argument, the images will be attached
+to the resulting message.
+                      """,
+                      action="store_true")
 
   # monthly or weekly style email reports
   frequency = parser.add_mutually_exclusive_group()
@@ -445,6 +491,11 @@ def main():
     if args.csv == args.orgcsv:
       print("Please use different filenames for the --csv and --orgcsv options.")
       sys.exit(-1)
+
+  if args.plot and (not args.csv or not args.orgcsv):
+    print("You must specify at least one CSV file to plot with the --csv or " +
+          " --orgcsv options.")
+    sys.exit(-1)
 
   report = ''
   billing_data = awslib.get_latest_bill(
@@ -506,7 +557,7 @@ def main():
     print(report)
 
   if args.email:
-    send_email(report, args.weekly)
+    send_email(report, args.weekly, (args.csv, args.orgcsv))
 
 if __name__ == "__main__":
   main()
