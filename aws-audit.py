@@ -300,9 +300,9 @@ def send_email(report, weekly, plots):
     report:  the raw string containing the final report
     weekly:  boolean, if true use weekly email formatting.  if false, use
                monthly.
-    plots:   a tuple of csv file locations used to create plots to attach
+    plots:   a tuple of plot file locations to attach to the email
   """
-  csv, orgcsv = plots
+  account_plot, org_plot = plots
 
   if weekly:
     subject = emailsettings.EMAIL_SUBJECT_WEEKLY
@@ -323,19 +323,15 @@ def send_email(report, weekly, plots):
   msg['To'] = emailsettings.EMAIL_TO_ADDR
   msg.attach(message_body)
 
-  if csv or orgcsv:
-    account_plot_filename, org_plot_filename = create_plots(acctcsv=csv,
-                                                            orgcsv=orgcsv)
+  if account_plot:
+    img_data = open(account_plot, 'rb').read()
+    image = MIMEImage(img_data, name=os.path.basename(account_plot))
+    msg.attach(image)
 
-    if account_plot_filename:
-      img_data = open(account_plot_filename, 'rb').read()
-      image = MIMEImage(img_data, name=os.path.basename(account_plot_filename))
-      msg.attach(image)
-
-    if org_plot_filename:
-      img_data = open(org_plot_filename, 'rb').read()
-      image = MIMEImage(img_data, name=os.path.basename(org_plot_filename))
-      msg.attach(image)
+  if org_plot:
+    img_data = open(org_plot, 'rb').read()
+    image = MIMEImage(img_data, name=os.path.basename(org_plot))
+    msg.attach(image)
 
   s = smtplib.SMTP(emailsettings.MAIL_SERVER)
   s.sendmail(emailsettings.EMAIL_FROM_ADDR,
@@ -564,11 +560,15 @@ def main():
   if args.orgcsv:
     root.generate_project_csv(outfile=args.orgcsv, month=month, year=year)
 
+  account_plot = org_plot = None
+  if args.plot:
+    account_plot, org_plot = create_plots(acctcsv=args.csv, orgcsv=args.orgcsv)
+
   if not args.quiet:
     print(report)
 
   if args.email:
-    send_email(report, args.weekly, (args.csv, args.orgcsv))
+    send_email(report, args.weekly, (account_plot, org_plot))
 
 if __name__ == "__main__":
   main()
