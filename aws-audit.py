@@ -33,9 +33,6 @@ import tree
 # email settings:  user-defined content and server information
 import emailsettings
 
-# create plots of csv data
-import plots
-
 locale.setlocale(locale.LC_ALL, '') # for comma formatting
 
 def parse_billing_data(billing_data):
@@ -279,6 +276,8 @@ def create_plots(acctcsv=None, orgcsv=None):
   returns:
     tuple of the full path to the plots created, or None
   """
+  import plots  # slow import is slow
+
   account_plot = org_plot = None
 
   if acctcsv is not None:
