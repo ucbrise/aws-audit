@@ -85,13 +85,13 @@ year,month,lab or PI,project,spend,num accounts
 ```
 
 Notes about CSV output (and plots):
-* The script will check for the existence of the CSV(s) passed through the CLI arguments,
-and will either append to an existing file or create a new one.
-* If you automate execution of this tool via cron, you can use shell magic to autogenerate
-new CSV filenames based on things like the current date.
-* By default, all accounts and project spends will be displayed.  This can be changed by
-adding `limit=<some value>` in the calls to `generate_simple_csv()` and
-`root.generate_project_csv()` in `aws-audit.py:main()`.
+* The script will check for the existence of the CSV(s) passed through the CLI
+arguments, and will either append to an existing file or create a new one.
+* If you automate execution of this tool via cron, you can use shell magic to
+autogenerate new CSV filenames based on things like the current date.
+* By default, all accounts and project spends will be displayed.  This can be
+changed by adding `limit=<some value>` in the calls to `generate_simple_csv()`
+and `root.generate_project_csv()` in `aws-audit.py:main()`.
 * The fields in the CSV, as well as the headers, can be customized.  For non-OU
 CSV format changes, please look at the `generate_simple_csv()` function in
 `aws-audit.py`.  For OU/project-based reports, look at the
@@ -123,8 +123,8 @@ refer to the [boto3 documentation on configuring credentials](https://boto3.read
 If the reports will be sent via a cronjob, please take look at
 `awsreport-crontab` for ideas.
 
-If you want to send email reports, please edit `emailsettings.py` and change the following
-variables:
+If you want to send email reports, please edit `emailsettings.py` and change
+the following variables:
 ```
 MAIL_SERVER = "localhost"
 EMAIL_TO_ADDR = "list@example.corp"
