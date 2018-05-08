@@ -84,15 +84,20 @@ year,month,lab or PI,project,spend,num accounts
 2018,04,ROOT,Researcher 1,$1.16,10
 ```
 
-Notes about CSV output:
-* The script will check for the existence of the CSV(s) passed through the CLI arguments,
-and will either append to an existing file or create a new one.
-* If you automate execution of this tool via cron, you can use shell magic to autogenerate
-new CSV filenames based on things like the current date.
-* By default, all accounts and project spends will be displayed.  This can be changed by
-adding `limit=<some value>` in the `aws-audit.py`, lines [499](https://github.com/ucbrise/aws-audit/blob/8b6231d6ee4463d3f56f4cbba15c5555e3370069/aws-audit.py#L499) and [502](https://github.com/ucbrise/aws-audit/blob/be631849f82482860f9d8899ec8721238515cf3c/aws-audit.py#L502).
-* The fields in the CSV, as well as the headers, can be customized.  For non-OU CSV
-format changes, please look in `aws-audit.py`, in the [generate_simple_csv](https://github.com/ucbrise/aws-audit/blob/8b6231d6ee4463d3f56f4cbba15c5555e3370069/aws-audit.py#L167) function.  For OU/project-based reports, look at [generate_project_csv](https://github.com/ucbrise/aws-audit/blob/8b6231d6ee4463d3f56f4cbba15c5555e3370069/tree.py#L150)
+Notes about CSV output (and plots):
+* The script will check for the existence of the CSV(s) passed through the CLI
+arguments, and will either append to an existing file or create a new one.
+* If you automate execution of this tool via cron, you can use shell magic to
+autogenerate new CSV filenames based on things like the current date.
+* By default, all accounts and project spends will be displayed.  This can be
+changed by adding `limit=<some value>` in the calls to `generate_simple_csv()`
+and `root.generate_project_csv()` in `aws-audit.py:main()`.
+* The fields in the CSV, as well as the headers, can be customized.  For non-OU
+CSV format changes, please look at the `generate_simple_csv()` function in
+`aws-audit.py`.  For OU/project-based reports, look at the
+`generate_project_csv()` method in `tree.py`.
+* If you are using the `--plot` argument and change these fields, you will also
+need to update `plots.py` with the new field names.
 
 Caveat(s):
 * Billing data for individual [IAM roles](https://aws.amazon.com/iam/) is not
@@ -118,8 +123,8 @@ refer to the [boto3 documentation on configuring credentials](https://boto3.read
 If the reports will be sent via a cronjob, please take look at
 `awsreport-crontab` for ideas.
 
-If you want to send email reports, please edit `emailsettings.py` and change the following
-variables:
+If you want to send email reports, please edit `emailsettings.py` and change
+the following variables:
 ```
 MAIL_SERVER = "localhost"
 EMAIL_TO_ADDR = "list@example.corp"
@@ -157,7 +162,7 @@ Full output of `--help`:
 ```
 usage: aws-audit.py [-h] [-i AWS_ID] [-b S3_BILLING_BUCKET]
                     [-L LOCAL_BILLING_CSV] [-s] [-q] [-o] [-l LIMIT] [-D] [-f]
-                    [-e] [-O FILENAME] [-C FILENAME] [-w | -m]
+                    [-e] [-O FILENAME] [-C FILENAME] [-p] [-w | -m]
 
 Download, parse and create reports for general AWS spend, optionally sending
 the report as an e-mail and/or output CSV-based spending data.
