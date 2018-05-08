@@ -202,6 +202,13 @@ optional arguments:
                         Output account-based spends to a CSV. If FILENAME
                         exists, the script will append to the file instead of
                         creating a new one.
+  -p, --plot            Create plots of CSV data. Only useful if the --csv or
+                        --orgcsv arguments are used. This will create PNG
+                        plots that are saved in the directory where the CSV
+                        data lives, and will share the filename of the CSV
+                        file used to create the plot. If this argument is
+                        specified with the --email argument, any images will
+                        be attached to the resulting message.
   -w, --weekly          Formats the email subject and body to deonte a
                         "weekly" report on spend, from the start of the
                         current month to the present day.
