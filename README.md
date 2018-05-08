@@ -157,7 +157,7 @@ Full output of `--help`:
 ```
 usage: aws-audit.py [-h] [-i AWS_ID] [-b S3_BILLING_BUCKET]
                     [-L LOCAL_BILLING_CSV] [-s] [-q] [-o] [-l LIMIT] [-D] [-f]
-                    [-e] [-O FILENAME] [-C FILENAME] [-w | -m]
+                    [-e] [-O FILENAME] [-C FILENAME] [-p] [-w | -m]
 
 Download, parse and create reports for general AWS spend, optionally sending
 the report as an e-mail and/or output CSV-based spending data.
