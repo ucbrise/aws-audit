@@ -54,6 +54,8 @@ def parse_billing_data(billing_data):
   month = ''
   year = ''
 
+  billing_data = list(billing_data)
+  # populate the dict of user spends
   for row in billing_data:
     if len(row) < 4:
       continue
@@ -70,6 +72,14 @@ def parse_billing_data(billing_data):
       user_dict[acct_num]['name'] = row[9]
       user_dict[acct_num]['total'] = float(row[24])
       user_dict[acct_num]['currency'] = row[23]
+
+  # now apply any credits received (for things like compromised accounts)
+  for row in billing_data:
+    if len(row) < 4:
+      continue
+    if row[3] == 'LinkedLineItem' and 'Unauthorized Usage' in row[18]:
+      # value is always negative, so add!
+      user_dict[row[2]]['total'] = user_dict[row[2]]['total'] + float(row[25])
 
   return user_dict, currency, month, year
 
