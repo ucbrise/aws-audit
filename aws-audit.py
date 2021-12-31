@@ -575,7 +575,7 @@ def main():
 
   # no OU tree, just spew out the report
   if not args.ou:
-    report = generate_simple_report(
+    report = report + generate_simple_report(
       user_dict,
       args.limit,
       args.display_ids,
