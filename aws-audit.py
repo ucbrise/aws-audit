@@ -262,7 +262,9 @@ def generate_leaderboard(user_dict, display_ids, top, default_currency):
                                                     acct_total_str,
                                                     acct_total_currency)
 
-  return report
+    report = report + "\n\n"
+
+    return report
 
 def generate_simple_report(user_dict, limit, display_ids, default_currency):
   """
