@@ -222,6 +222,50 @@ def generate_simple_csv(user_dict, outfile=None, limit=0.0,
       line = [year, month, acct_name, acct_total_str]
       writer.writerow(line)
 
+def generate_leaderboard(user_dict, display_ids, top, default_currency):
+  """
+  list top N spenders
+
+  args:
+    user_dict:         dict of all users and individual total spends
+    display_ids:       display each user's AWS ID after their name
+    default_currency:  default currency
+    top_users:         limit output to N top users.  if 0, print all.
+  """
+  total_spend = 0
+  report = ''
+  account_details = list()
+  top_spenders = list()
+
+  # for each user, get the OU that they are the member of
+  for id in user_dict.keys():
+    u = user_dict[id]
+    account_details.append((u['name'], id, u['total'], u['currency']))
+
+  top_spenders = sorted(account_details, key = lambda acct: acct[2], reverse = True)[:top]
+  total_spend = sum([x[2] for x in top_spenders])
+
+  sum_str = locale.format('%.2f', total_spend, grouping=True)
+  report = "== AWS top %s leaderboard:  $%s %s ==\n\n" \
+           % (top, sum_str, default_currency)
+
+  for acct in top_spenders:
+    (acct_name, acct_num, acct_total, acct_total_currency) = acct
+
+    acct_total_str = locale.format("%.2f", acct_total, grouping=True)
+    if display_ids:
+      report = report + "{:<25}\t({})\t{} {}\n".format(acct_name, acct_num,
+                                                       acct_total_str,
+                                                       acct_total_currency)
+    else:
+      report = report + "{:<25}\t\t${} {}\n".format(acct_name,
+                                                    acct_total_str,
+                                                    acct_total_currency)
+
+  report = report + "\n\n"
+
+  return report
+
 def generate_simple_report(user_dict, limit, display_ids, default_currency):
   """
   generate the billing report, categorized by OU.
@@ -444,6 +488,14 @@ the plot.  If this argument is specified with the --email argument, any images
 will be attached to the resulting message.
                       """,
                       action="store_true")
+  parser.add_argument("-T",
+                      "--top",
+                      help="""
+Display the top N spenders at the beginning of the report.  0 (default) will
+ignore this argument.
+                      """,
+                      type=int,
+                      default=0)
 
   # monthly or weekly style email reports
   frequency = parser.add_mutually_exclusive_group()
@@ -512,9 +564,18 @@ def main():
   )
   user_dict, currency, month, year = parse_billing_data(billing_data)
 
+  # leaderboard?
+  if args.top != 0:
+    report = generate_leaderboard(
+      user_dict,
+      args.display_ids,
+      args.top,
+      currency
+    )
+
   # no OU tree, just spew out the report
   if not args.ou:
-    report = generate_simple_report(
+    report = report + generate_simple_report(
       user_dict,
       args.limit,
       args.display_ids,
