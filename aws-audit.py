@@ -246,7 +246,7 @@ def generate_leaderboard(user_dict, display_ids, top, default_currency):
   total_spend = sum([x[2] for x in top_spenders])
 
   sum_str = locale.format('%.2f', total_spend, grouping=True)
-  report = "== AWS totals for the top %s leaderboard:  $%s %s ==\n\n" \
+  report = "== AWS top %s leaderboard:  $%s %s ==\n\n" \
            % (top, sum_str, default_currency)
 
   for acct in top_spenders:
@@ -262,9 +262,9 @@ def generate_leaderboard(user_dict, display_ids, top, default_currency):
                                                     acct_total_str,
                                                     acct_total_currency)
 
-    report = report + "\n\n"
+  report = report + "\n\n"
 
-    return report
+  return report
 
 def generate_simple_report(user_dict, limit, display_ids, default_currency):
   """
@@ -566,7 +566,7 @@ def main():
 
   # leaderboard?
   if args.top != 0:
-    report = generate_leader_board(
+    report = generate_leaderboard(
       user_dict,
       args.display_ids,
       args.top,
